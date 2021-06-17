@@ -93,6 +93,8 @@ global stop        %停车结束控制
 global stopflag    %泊车时间标志位
 
 
+global tempAngle   %用于保存上一时刻方向盘转角
+
 
 rosMasterUri = 'http://192.168.1.202:11311';
 %teleopTopicName = '/apa';
@@ -219,6 +221,9 @@ while(1)
     set(TrajectoryDsp,'UserData',line([V3G(1,1),V2G(1,1)],[V3G(2,1),V2G(2,1)]));
     set(TrajectoryDsp,'UserData',line([V3G(1,1),V4G(1,1)],[V3G(2,1),V4G(2,1)]));
     set(TrajectoryDsp,'UserData',line([V1G(1,1),V4G(1,1)],[V1G(2,1),V4G(2,1)]));
+    
+    %用于保存上一时刻方向盘转角
+    tempAngle=angle(1,2);
     
     if(stop==1) %%手动终止泊车过程
         break;
