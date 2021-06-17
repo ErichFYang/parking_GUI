@@ -86,8 +86,8 @@ global ObstaclePose2
 global ObstaclePose3
 global ObstaclePose4
 %车辆信息
-global Length      %车长
-global Width       %车宽
+%global Length      %车长
+%global Width       %车宽
 global Yaw         %行驶偏航角
 global stop        %停车结束控制
 global stopflag    %泊车时间标志位
@@ -209,9 +209,11 @@ while(1)
       %求从车身坐标系到全局坐标系的刚体变换矩阵
     T = [cos(Yaw), -sin(Yaw), LocalX; sin(RefPoseTheta), cos(RefPoseTheta), LocalY; 0, 0, 1]; 
       %求车辆四角点在车身坐标系下的位置
-    V1L = [Length/2;Width/2;1];V2L=[Length/2;-Width/2;1];V3L=[-Length/2;-Width/2;1]; V4L=[-Length/2;Width/2;1];
+    V1L = [3.026;0.3955;1];V2L=[3.026;-0.3955;1];V3L=[2.646;-0.7755;1]; V4L=[-0.384;-0.7755;1];
+    V5L = [-0.544;-0.4105;1]; V6L = [-0.544;0.4105;1]; V7L = [-0.384;0.7755;1]; V8L = [2.646;0.7755;1];
       %求车辆四角点在全局坐标系下的位置
     V1G = T*V1L; V2G = T*V2L; V3G = T*V3L; V4G = T*V4L;
+    V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
       %绘制车辆模型，以长方形框表示实时位置
     set(TrajectoryDsp,'UserData',line([V1G(1,1),V2G(1,1)],[V1G(2,1),V2G(2,1)]));
     set(TrajectoryDsp,'UserData',line([V3G(1,1),V2G(1,1)],[V3G(2,1),V2G(2,1)]));
@@ -224,6 +226,8 @@ while(1)
 end
 
 %计算泊车评分
+
+
 
 %显示泊车时间与评分
 TimeDsp= findobj(0, 'tag', 'TimeDsp');
