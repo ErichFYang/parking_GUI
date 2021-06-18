@@ -167,7 +167,7 @@ varargout{1} = handles.output;
 % imu = rossubscriber('/imu/data', 'sensor_msgs/Imu',@imuCallback);
 % velometer = rossubscriber('/velometer/base_link_local', 'geometry_msgs/TwistStamped',@velometerCallback);
 % Vehicle_pose2D = rossubscriber('/odometer/local_map/base_link', 'nav_msgs/Odometry',@Vehicle_pose2DCallback);
-angle = myvector(2);
+
 sub_steering_angle = rossubscriber('/steering_angle_deg', 'apa_msgs/SteeringAngleStamped',{@SteeringAngleCallback, angle});
 angleDsp= findobj(0, 'tag', 'angleDsp');   
 while(1)
