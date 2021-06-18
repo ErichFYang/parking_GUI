@@ -1,4 +1,4 @@
-
+%%
 function varargout = parking_GUI(varargin)
 % PARKING_GUI MATLAB code for parking_GUI.fig
 %      PARKING_GUI, by itself, creates a new PARKING_GUI or raises the existing
@@ -43,8 +43,9 @@ else
     gui_mainfcn(gui_State, varargin{:});
 end
 % End initialization code - DO NOT EDIT
+end
 
-
+%%
 % --- Executes just before parking_GUI is made visible.
 function parking_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
@@ -56,7 +57,7 @@ function parking_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % 声明一些全局变量
 % ROS Master URI和Topic name
-global rosMasterUri
+% global rosMasterUri
 %global teleopTopicName
 
 % 汽车运动信息
@@ -96,27 +97,53 @@ global stopflag    %泊车时间标志位
 global tempAngle   %用于保存上一时刻方向盘转角
 
 
+VehicleSpeed = 0;
+angle = [0, 0];       
+LocalX = 0;       
+LocalY = 0;    
+LocalVx = 0;
+LocalVy = 0;
+LocalAx = 0;
+LocalAy = 0;
+CollisonDistance = 0;  
+yError = 0;      
+xError = 0;       
+HeadingAngelError = 0;
+Time = 0;
+t = 0;
+score = 0;
+RefPose1 = 0;
+RefPose2 = 0;
+RefPose3 = 0;
+RefPose4 = 0;
+
+ObstaclePose1 = 0;
+ObstaclePose2 = 0;
+ObstaclePose3 = 0;
+ObstaclePose4 = 0;
+
+Yaw = 0;
+stop = 0;  
+stopflag = 0;
+tempAngle = 0;
+
 %rosMasterUri = 'http://192.168.1.202:11311';
 %teleopTopicName = '/apa';
 
-%%
+
 % 检测标准ROS环境变量的值
 %getenv('ROS_MASTER_URI')
 %getenv('ROS_HOSTNAME')
 %getenv('ROS_IP')
 
 % 设置ROS环境变量的值
-setenv('ROS_MASTER_URI','http://192.168.1.1:11311&#039;)
-setenv('ROS_IP','192.168.1.100')
+% setenv('ROS_MASTER_URI','http://192.168.1.1:11311&#039;)
+% setenv('ROS_IP','192.168.1.100')
+rosshutdown
 rosinit
-
-%%
 
 %setenv('ROS_MASTER_URI',rosMasterUri)
 %rosinit
-
-stop=0;
-
 % Choose default command line output for parking_GUI
 handles.output = hObject;
 
@@ -125,7 +152,8 @@ guidata(hObject, handles);
 
 % UIWAIT makes parking_GUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
-
+end
+%%
 
 % --- Outputs from this function are returned to the command line.
 function varargout = parking_GUI_OutputFcn(hObject, eventdata, handles) 
@@ -135,15 +163,24 @@ function varargout = parking_GUI_OutputFcn(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Get default command line output from handles structure
+global angle
 varargout{1} = handles.output;
-%%
-%采用while(1)循环进行泊车过程中的读取信息与界面交互
+
+% parking_slot = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped',@parkingslotCallback);
+% imu = rossubscriber('/imu/data', 'sensor_msgs/Imu',@imuCallback);
+% velometer = rossubscriber('/velometer/base_link_local', 'geometry_msgs/TwistStamped',@velometerCallback);
+% Vehicle_pose2D = rossubscriber('/odometer/local_map/base_link', 'nav_msgs/Odometry',@Vehicle_pose2DCallback);
+sub_steering_angle = rossubscriber('/steering_angle_deg', 'apa_msgs/SteeringAngleStamped',@SteeringAngleCallback);
+angleDsp= findobj(0, 'tag', 'angleDsp');   
 while(1)
-    parking_slot = rossubscriber('/parking_slot_info',@parkingslotCallback);
-    imu = rossubscriber('/imu_raw',@imuCallback);
-    velometer = rossubscriber('/velometer/base_link_local',@velometerCallback);
-    Vehicle_pose2D = rossubscriber('/odometer/local_map/base_link',@Vehicle_pose2DCallback);
-    SteeringAngle = rossubscriber('//steering_angle_deg',@SteeringAngleCallback);
+    fprintf('steering_angle: %f deg\n', angle(2));
+    set(angleDsp,'string',num2str(angle(2)));
+    pause(0.1)
+end
+        
+
+%采用while(1)循环进行泊车过程中的读取信息与界面交互
+while(0)
     
     if(VehicleSpeed>0)  
         tic;
@@ -239,6 +276,7 @@ TimeDsp= findobj(0, 'tag', 'TimeDsp');
 set(TimeDsp,'string',num2str(Time));
 scoreDsp= findobj(0, 'tag', 'scoreDsp');
 set(scoreDsp,'string',num2str(score));
+end
 %%
 
 % --- Executes on button press in pushbutton1.
@@ -246,8 +284,8 @@ function pushbutton1_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-
+end
+%%
 % --- If Enable == 'on', executes on mouse press in 5 pixel border.
 % --- Otherwise, executes on mouse press in 5 pixel border or over pushbutton1.
 function pushbutton1_ButtonDownFcn(hObject, eventdata, handles)  
@@ -256,3 +294,5 @@ function pushbutton1_ButtonDownFcn(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
  globalx stop=1;
+ stop
+end
