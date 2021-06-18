@@ -98,7 +98,7 @@ global tempAngle   %用于保存上一时刻方向盘转角
 
 
 VehicleSpeed = 0;
-angle = [0, 0];       
+angle = myvector(2);       
 LocalX = 0;       
 LocalY = 0;    
 LocalVx = 0;
@@ -173,9 +173,15 @@ varargout{1} = handles.output;
 sub_steering_angle = rossubscriber('/steering_angle_deg', 'apa_msgs/SteeringAngleStamped',@SteeringAngleCallback);
 angleDsp= findobj(0, 'tag', 'angleDsp');   
 while(1)
-    fprintf('steering_angle: %f deg\n', angle(2));
-    set(angleDsp,'string',num2str(angle(2)));
-    pause(0.1)
+    if(angle.empty())
+        fprintf('no data\n')
+        pause(0.1);
+        continue;
+    end
+    latest_angle_record = angle.back();
+    fprintf('current log length of steering_angle: %d\nlatest steering_angle: %f deg\n', angle.size(), latest_angle_record(2));
+    set(angleDsp,'string',num2str(latest_angle_record(2)));
+    pause(0.1);
 end
         
 
@@ -293,6 +299,7 @@ function pushbutton1_ButtonDownFcn(hObject, eventdata, handles)
 % hObject    handle to pushbutton1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
- globalx stop=1;
- stop
+ global stop;
+ stop = 1;
+ fprintf('stop')
 end
