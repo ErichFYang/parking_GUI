@@ -96,7 +96,7 @@ global stopflag    %泊车时间标志位
 global tempAngle   %用于保存上一时刻方向盘转角
 
 
-rosMasterUri = 'http://192.168.1.202:11311';
+%rosMasterUri = 'http://192.168.1.202:11311';
 %teleopTopicName = '/apa';
 
 %%
@@ -106,14 +106,14 @@ rosMasterUri = 'http://192.168.1.202:11311';
 %getenv('ROS_IP')
 
 % 设置ROS环境变量的值
-%setenv('ROS_MASTER_URI','http://192.168.1.1:11311&#039;)
-%setenv('ROS_IP','192.168.1.100')
-%rosinit
+setenv('ROS_MASTER_URI','http://192.168.1.1:11311&#039;)
+setenv('ROS_IP','192.168.1.100')
+rosinit
 
 %%
 
-setenv('ROS_MASTER_URI',rosMasterUri)
-rosinit
+%setenv('ROS_MASTER_URI',rosMasterUri)
+%rosinit
 
 stop=0;
 
