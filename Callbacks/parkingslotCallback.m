@@ -1,6 +1,6 @@
 %%parkingslotCallback
 
-function parkingslotCallback(src,message)
+function parkingslotCallback(~,message)
 global RefPose1
 global RefPose2
 global RefPose3
@@ -10,11 +10,18 @@ global ObstaclePose1
 global ObstaclePose2
 global ObstaclePose3
 global ObstaclePose4
-parking_slot_msgStructs = readMessages(message,'DataFormat','struct');
-RefPoseX = cellfun(@(Ref) double(Ref.RefPose.X),parking_slot_msgStructs);
-RefPoseY = cellfun(@(Ref) double(Ref.RefPose.Y),parking_slot_msgStructs);
-RefPoseTheta = cellfun(@(Ref) double(Ref.RefPose.Theta),parking_slot_msgStructs);
-RefExtend_Y = cellfun(@(Ref) double(Ref.RefExtendY),parking_slot_msgStructs);
+%parking_slot_msgStructs = readMessages(message,'DataFormat','struct');
+%RefPoseX = cellfun(@(Ref) double(Ref.RefPose.X),parking_slot_msgStructs);
+%RefPoseY = cellfun(@(Ref) double(Ref.RefPose.Y),parking_slot_msgStructs);
+%RefPoseTheta = cellfun(@(Ref) double(Ref.RefPose.Theta),parking_slot_msgStructs);
+%RefExtend_X = cellfun(@(Ref) double(Ref.RefExtendX),parking_slot_msgStructs);
+%RefExtend_Y = cellfun(@(Ref) double(Ref.RefExtendY),parking_slot_msgStructs);
+RefPoseX.push_back(message.RefPose.X)
+RefPoseY.push_back(message.RefPose.Y)
+RefPoseTheta.push_back(message.RefPose.Theta)
+RefExtend_X.push_back(message.RefExtendX)
+RefExtend_Y.push_back(message.RefExtendY)
+
 T1 = [cos(RefPoseTheta), -sin(RefPoseTheta), RefPoseX; sin(RefPoseTheta), cos(RefPoseTheta), RefPoseY; 0, 0, 1];
 RefPose1 = [RefPoseX;RefPoseY;1];
 b1 = [ 0; -RefExtend_Y; 1];
