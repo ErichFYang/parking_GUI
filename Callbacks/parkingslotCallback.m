@@ -16,11 +16,11 @@ global ObstaclePose4
 %RefPoseTheta = cellfun(@(Ref) double(Ref.RefPose.Theta),parking_slot_msgStructs);
 %RefExtend_X = cellfun(@(Ref) double(Ref.RefExtendX),parking_slot_msgStructs);
 %RefExtend_Y = cellfun(@(Ref) double(Ref.RefExtendY),parking_slot_msgStructs);
-RefPoseX.push_back(message.RefPose.X)
-RefPoseY.push_back(message.RefPose.Y)
-RefPoseTheta.push_back(message.RefPose.Theta)
-RefExtend_X.push_back(message.RefExtendX)
-RefExtend_Y.push_back(message.RefExtendY)
+RefPoseX = message.RefPose.X;
+RefPoseY = message.RefPose.Y;
+RefPoseTheta = message.RefPose.Theta;
+RefExtend_X = message.RefExtendX;
+RefExtend_Y = message.RefExtendY;
 
 T1 = [cos(RefPoseTheta), -sin(RefPoseTheta), RefPoseX; sin(RefPoseTheta), cos(RefPoseTheta), RefPoseY; 0, 0, 1];
 RefPose1 = [RefPoseX;RefPoseY;1];
@@ -36,11 +36,11 @@ RefPose4 = T1*d1;
 %ObstacleTheta = cellfun(@(Obs) double(Obs.ObstaclePose.Theta),parking_slot_msgStructs);
 %ObstacleExtend_X = cellfun(@(Obs) double(Obs.ObstacleExtendX),parking_slot_msgStructs);
 %ObstacleExtend_Y = cellfun(@(Obs) double(Obs.ObstacleExtendY),parking_slot_msgStructs);
-ObstaclePoseX.push_back(message.ObstaclePose.X)
-ObstaclePoseY.push_back(message.ObstaclePose.Y)
-ObstacleTheta.push_back(message.ObstaclePose.Theta)
-ObstacleExtend_X.push_back(message.ObstacleExtendX)
-ObstacleExtend_Y.push_back(message.ObstacleExtendY)
+ObstaclePoseX = message.ObstaclePose.X;
+ObstaclePoseY = message.ObstaclePose.Y;
+ObstacleTheta = message.ObstaclePose.Theta;
+ObstacleExtend_X = message.ObstacleExtendX;
+ObstacleExtend_Y = message.ObstacleExtendY;
 T2 = [cos(ObstacleTheta), -sin(ObstacleTheta), ObstaclePoseX; sin(ObstacleTheta), cos(ObstacleTheta), ObstaclePoseY; 0, 0, 1];
 ObstaclePose1 = [ObstaclePoseX,ObstaclePoseY];
 b2 = [ 0; -ObstacleExtend_Y; 1];
