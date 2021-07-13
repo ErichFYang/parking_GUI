@@ -1,6 +1,6 @@
 %Vehicle_pose2DCallback
 
-function Vehicle_pose2DCallback(~,message)
+function Vehicle_pose2DCallback(~,message,buffer1,buffer2,buffer3)
  global LocalX       % 纵向位置
  global LocalY       % 横向位置
  global Yaw          % 汽车偏航角
@@ -13,7 +13,10 @@ function Vehicle_pose2DCallback(~,message)
 % Yaw = [time1,atan(YawY/YawX)];
 % LocalX = [time1,X];
 % LocalY = [time1,Y];
-LocalX.push_back([message.Header.Stamp.seconds,message.Pose.Pose.Position.X])
-LocalY.push_back([message.Header.Stamp.seconds,message.Pose.Pose.Position.Y])
-Yaw.push_back([message.Header.Stamp.seconds,atan(message.Pose.Pose.Orientation.Y/message.Pose.Pose.Orientation.X)])
+LocalX = message.Pose.Pose.Position.X;
+LocalY = message.Pose.Pose.Position.Y;
+Yaw = atan(message.Pose.Pose.Orientation.Y/message.Pose.Pose.Orientation.X);
+buffer1.push_back([message.Header.Stamp.seconds,LocalX]);
+buffer2.push_back([message.Header.Stamp.seconds,LocalY]);
+buffer3.push_back([message.Header.Stamp.s,Yaw];
 end

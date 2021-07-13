@@ -1,6 +1,6 @@
 %%parkingslotCallback
 
-function parkingslotCallback(~,message)
+function parkingslotCallback(~,message,buffer1,buffer2,buffer3,buffer4,buffer5,buffer6,buffer7,buffer8,buffer9)
 global RefPose1
 global RefPose2
 global RefPose3
@@ -30,6 +30,10 @@ d1 = [ RefExtend_X;-RefExtend_Y; 1];
 RefPose2 = T1*b1;
 RefPose3 = T1*c1;
 RefPose4 = T1*d1;
+buffer1.push_back([message.Header.Stamp.seconds, RefPose1(1),RefPose1(2)]); 
+buffer2.push_back([message.Header.Stamp.seconds, RefPose2(1),RefPose2(2)]); 
+buffer3.push_back([message.Header.Stamp.seconds, RefPose3(1),RefPose3(2)]);
+buffer4.push_back([message.Header.Stamp.seconds, RefPose4(1),RefPose4(2)]); 
 
 %ObstaclePoseX = cellfun(@(Obs) double(Obs.ObstaclePose.X),parking_slot_msgStructs);
 %ObstaclePoseY = cellfun(@(Obs) double(Obs.ObstaclePose.Y),parking_slot_msgStructs);
@@ -49,4 +53,9 @@ d2 = [ -ObstacleExtend_X;-ObstacleExtend_Y; 1];
 ObstaclePose2 = T2*b2;
 ObstaclePose3 = T2*c2;
 ObstaclePose4 = T2*d2;
+buffer5.push_back([message.Header.Stamp.seconds, ObstaclePose1(1), ObstaclePose1(2)]);
+buffer6.push_back([message.Header.Stamp.seconds, ObstaclePose2(1), ObstaclePose2(2)]);
+buffer7.push_back([message.Header.Stamp.seconds, ObstaclePose3(1), ObstaclePose3(2)]);
+buffer8.push_back([message.Header.Stamp.seconds, ObstaclePose4(1), ObstaclePose4(2)]);
+buffer9.push_back([message.Header.Stamp.seconds, RefPoseTheta]);
 end

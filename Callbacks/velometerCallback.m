@@ -3,7 +3,7 @@
 function velometerCallback(~,message,buffer)
 global LocalVx      %纵向速度
 global LocalVy      %横向速度
-global VehicleSpeed % 车速
+%global VehicleSpeed % 车速
 
 % 
 % velometer_msgStructs = readMessages(message,'DataFormat','struct');
@@ -15,8 +15,10 @@ global VehicleSpeed % 车速
 % LocalVy = [time3,Vy];
 % VehicleSpeed=[time3,Speed];
 
-LocalVx.push_back([message.Header.Stamp.seconds,message.Twist.Linear.X])
-LocalVy.push_back([message.Header.Stamp.seconds,message.Twist.Linear.Y])
-Speed=sqrt(Vx.*Vx+Vy.*Vy);
+LocalVx = [message.Header.Stamp.seconds,message.Twist.Linear.X];
+LocalVy = [message.Header.Stamp.seconds,message.Twist.Linear.Y];
+Vx = message.Twist.Linear.X;
+Vy = message.Twist.Linear.Y;
+Speed=sqrt(Vx*Vx+Vy*Vy);
 buffer.push_back([message.Header.Stamp.seconds, Speed]);
 end
