@@ -154,6 +154,7 @@ varargout{1} = handles.output;
     Obstacle3 = myvector(3);
     Obstacle4 = myvector(3);
     Refposetheta = myvector(2);
+    
     parking_slot = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped',{@parkingslotCallback,Ref1,Ref2,Ref3,Ref4,Obstacle1,Obstacle2,Obstacle3,Obstacle4,Refposetheta});
     
     LocalA = myvector(3);
@@ -173,9 +174,19 @@ varargout{1} = handles.output;
     angle = myvector(2);
     sub_steering_angle = rossubscriber('/steering_angle_deg', 'apa_msgs/SteeringAngleStamped',{@SteeringAngleCallback, angle});
     angleDsp= findobj(0, 'tag', 'angle');
+    axes(handles.Trajectory);
+    set(handles.Trajectory,'XLim',[0, 20],'YLim',[-5, 5]);
+    set(handles.Trajectory,'UserData',[line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
+        line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
+        line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
+        line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0])]);   
     
     %泊车过程（while（1）循环内）
     while(1)
+        global stop
+        if(stop==1) %%手动终止泊车过程
+            break;
+        end
 %         if(VehicleSpeed>0)
 %             tic;
 %             stopflag=0;
@@ -186,26 +197,49 @@ varargout{1} = handles.output;
 %              end
 %              stopflag=1;
 %         end            %%记录泊车时间
-        if(angle.empty()||VehicleSpeed.empty())
-            fprintf('no data\n')
+        if(angle.empty()||VehicleSpeed.empty()||LocalA.empty())
+            fprintf('no angle data\n')
             pause(0.1);
             continue;
         end
-        latest_angle_record = angle.back();
-        latest_speed_record = VehicleSpeed.back();
-        latest_A_record = LocalA.back();
+        latest_angle_record = angle.back();       
+        if(Ref1.empty()||Ref2.empty()||Ref3.empty()||Ref4.empty()||...
+            Obstacle1.empty()||Obstacle2.empty()||Obstacle3.empty()||Obstacle4.empty()||Refposetheta.empty())
+            fprintf('no parking slot data\n')
+            pause(0.1);
+            continue;
+        end   
         RefPose1 = Ref1.back(); RefPose2 = Ref2.back(); 
         RefPose3 = Ref3.back(); RefPose4 = Ref4.back();
         ObstaclePose1 = Obstacle1.back(); ObstaclePose2 = Obstacle2.back(); 
         ObstaclePose3 = Obstacle3.back(); ObstaclePose4 = Obstacle4.back();
         RefPoseTheta = Refposetheta.back();
+        if(VehicleSpeed.empty()||LocalA.empty()||localx.empty||localy.empty()||yaw.empty())
+            fprintf('no vehicle data\n')
+            pause(0.1);
+            continue;
+        end            
+        latest_speed_record = VehicleSpeed.back();
+        latest_A_record = LocalA.back();
         LocalX = localx.back();
         LocalY = localy.back();
         Yaw = yaw.back();
         
-        fprintf('current log length of steering_angle: %d\nlatest steering_angle: %f deg\n', angle.size(), latest_angle_record(2));
-        fprintf('current log length of vehicle_speed: %d\nlatest vehicle_speed: %f deg\n', VehicleSpeed.size(), latest_speed_record(2));
-        fprintf('current log length of Local_A: %d\nlatest Local_Ax: %f deg\nlatest Local_Ay: %f deg\n', VehicleSpeed.size(), latest_A_record(2),latest_A_record(3));
+        %记录当前车辆位置
+          %求从车身坐标系到全局坐标系的刚体变换矩阵
+        T = [cos(Yaw(2)), -sin(Yaw(2)), LocalX(2); sin(RefPoseTheta(2)), cos(RefPoseTheta(2)), LocalY(2); 0, 0, 1]; 
+          %求车辆八角点在车身坐标系下的位置
+        V1L = [3.026;0.3955;1];V2L=[3.026;-0.3955;1];V3L=[2.646;-0.7755;1]; V4L=[-0.384;-0.7755;1];
+        V5L = [-0.544;-0.4105;1]; V6L = [-0.544;0.4105;1]; V7L = [-0.384;0.7755;1]; V8L = [2.646;0.7755;1];
+          %求车辆八角点在全局坐标系下的位置
+        V1G = T*V1L; V2G = T*V2L; V3G = T*V3L; V4G = T*V4L;
+        V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
+        
+        %fprintf('current log length of steering_angle: %d\nlatest steering_angle: %f deg\n', angle.size(), latest_angle_record(2));
+        %fprintf('current log length of vehicle_speed: %d\nlatest vehicle_speed: %f deg\n', VehicleSpeed.size(), latest_speed_record(2));
+        %fprintf('current log length of Local_A: %d\nlatest Local_Ax: %f deg\nlatest Local_Ay: %f deg\n', VehicleSpeed.size(), latest_A_record(2),latest_A_record(3));
+        
+        % Display
         %方向盘转角
         set(angleDsp,'string',num2str(latest_angle_record(2)));
         %车速
@@ -216,45 +250,58 @@ varargout{1} = handles.output;
         set(LocalaxDsp,'string',num2str(latest_A_record(2)));
         pause(0.01);
         
+        %draw parking slot 
         TrajectoryDsp= findobj(0, 'tag', 'Trajectory');
+        axes(handles.Trajectory);
+
         %绘制目标车位
-        set(TrajectoryDsp,'UserData',line([RefPose1(2),RefPose2(2)],[RefPose1(3),RefPose2(3)])); %%X坐标，Y坐标
-        set(TrajectoryDsp,'UserData',line([ObstaclePose1(2),ObstaclePose2(2)],[ObstaclePose1(3),ObstaclePose2(3)]));
-        set(TrajectoryDsp,'UserData',line([ObstaclePose1(2),RefPose1(2)],[ObstaclePose1(3),RefPose1(3)]));
-        set(TrajectoryDsp,'UserData',line([ObstaclePose2(2),RefPose2(2)],[ObstaclePose2(3),RefPose2(3)]));
+        set(handles.Trajectory.UserData(1),'XData',[RefPose1(2),RefPose2(2)],'YData',[RefPose1(3),RefPose2(3)],'Color','red');
+        set(handles.Trajectory.UserData(2),'XData',[ObstaclePose1(2),ObstaclePose2(2)],'YData',[ObstaclePose1(3),ObstaclePose2(3)],'Color','red');
+        set(handles.Trajectory.UserData(3),'XData',[ObstaclePose1(2),RefPose1(2)],'YData',[ObstaclePose1(3),RefPose1(3)],'Color','red');
+        set(handles.Trajectory.UserData(4),'XData',[ObstaclePose2(2),RefPose2(2)],'YData',[ObstaclePose2(3),RefPose2(3)],'Color','red');
+        
+        %set(TrajectoryDsp,'UserData',line([RefPose1(2),RefPose2(2)],[RefPose1(3),RefPose2(3)])); %%X坐标，Y坐标
+        %set(TrajectoryDsp,'UserData',line([ObstaclePose1(2),ObstaclePose2(2)],[ObstaclePose1(3),ObstaclePose2(3)]));
+        %set(TrajectoryDsp,'UserData',line([ObstaclePose1(2),RefPose1(2)],[ObstaclePose1(3),RefPose1(3)]));
+        %set(TrajectoryDsp,'UserData',line([ObstaclePose2(2),RefPose2(2)],[ObstaclePose2(3),RefPose2(3)]));
     
         %绘制参考车位(前车)
-        set(TrajectoryDsp,'UserData',line([RefPose1(2),RefPose3(2)],[RefPose1(3),RefPose3(3)]));
-        set(TrajectoryDsp,'UserData',line([RefPose2(2),RefPose4(2)],[RefPose2(3),RefPose4(3)]));
+        set(handles.Trajectory.UserData(5),'XData',[RefPose1(2),RefPose3(2)],'YData',[RefPose1(3),RefPose3(3)],'Color','black');
+        set(handles.Trajectory.UserData(6),'XData',[RefPose2(2),RefPose4(2)],'YData',[RefPose2(3),RefPose4(3)],'Color','black');
+        
+        %set(TrajectoryDsp,'UserData',line([RefPose1(2),RefPose3(2)],[RefPose1(3),RefPose3(3)]));
+        %set(TrajectoryDsp,'UserData',line([RefPose2(2),RefPose4(2)],[RefPose2(3),RefPose4(3)]));
     
         %绘制障碍车位(后车)
-        set(TrajectoryDsp,'UserData',line([ObstaclePose1(2),ObstaclePose3(2)],[ObstaclePose1(3),ObstaclePose3(3)]));
-        set(TrajectoryDsp,'UserData',line([ObstaclePose2(2),ObstaclePose4(2)],[ObstaclePose2(3),ObstaclePose4(3)]));
+        set(handles.Trajectory.UserData(7),'XData',[ObstaclePose1(2),ObstaclePose3(2)],'YData',[ObstaclePose1(3),ObstaclePose3(3)],'Color','black');
+        set(handles.Trajectory.UserData(8),'XData',[ObstaclePose2(2),ObstaclePose4(2)],'YData',[ObstaclePose2(3),ObstaclePose4(3)],'Color','black');
+                
+        %set(TrajectoryDsp,'UserData',line([ObstaclePose1(2),ObstaclePose3(2)],[ObstaclePose1(3),ObstaclePose3(3)]));
+        %set(TrajectoryDsp,'UserData',line([ObstaclePose2(2),ObstaclePose4(2)],[ObstaclePose2(3),ObstaclePose4(3)]));
     
-        %记录当前车辆位置
-          %求从车身坐标系到全局坐标系的刚体变换矩阵
-        T = [cos(Yaw(2)), -sin(Yaw(2)), LocalX(2); sin(RefPoseTheta(2)), cos(RefPoseTheta(2)), LocalY(2); 0, 0, 1]; 
-          %求车辆八角点在车身坐标系下的位置
-        V1L = [3.026;0.3955;1];V2L=[3.026;-0.3955;1];V3L=[2.646;-0.7755;1]; V4L=[-0.384;-0.7755;1];
-        V5L = [-0.544;-0.4105;1]; V6L = [-0.544;0.4105;1]; V7L = [-0.384;0.7755;1]; V8L = [2.646;0.7755;1];
-          %求车辆八角点在全局坐标系下的位置
-        V1G = T*V1L; V2G = T*V2L; V3G = T*V3L; V4G = T*V4L;
-        V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
-          %绘制车辆模型，以长方形框表示实时位置
-        set(TrajectoryDsp,'UserData',line([V1G(1),V2G(1)],[V1G(2),V2G(2)]));
-        set(TrajectoryDsp,'UserData',line([V3G(1),V2G(1)],[V3G(2),V2G(2)]));
-        set(TrajectoryDsp,'UserData',line([V3G(1),V4G(1)],[V3G(2),V4G(2)]));
-        set(TrajectoryDsp,'UserData',line([V5G(1),V4G(1)],[V5G(2),V4G(2)]));
-        set(TrajectoryDsp,'UserData',line([V5G(1),V6G(1)],[V5G(2),V6G(2)]));
-        set(TrajectoryDsp,'UserData',line([V7G(1),V6G(1)],[V7G(2),V6G(2)]));
-        set(TrajectoryDsp,'UserData',line([V7G(1),V8G(1)],[V7G(2),V8G(2)]));
-        set(TrajectoryDsp,'UserData',line([V1G(1),V8G(1)],[V1G(2),V8G(2)]));
         
-        global stop
-        if(stop==1) %%手动终止泊车过程
-            break;
-        end
+        %绘制车辆模型，以长方形框表示实时位置
+        set(handles.Trajectory.UserData(9),'XData',[V1G(1),V2G(1)],'YData',[V1G(2),V2G(2)]);
+        set(handles.Trajectory.UserData(10),'XData',[V3G(1),V2G(1)],'YData',[V3G(2),V2G(2)]);
+        set(handles.Trajectory.UserData(11),'XData',[V3G(1),V4G(1)],'YData',[V3G(2),V4G(2)]);
+        set(handles.Trajectory.UserData(12),'XData',[V5G(1),V4G(1)],'YData',[V5G(2),V4G(2)]);
+        set(handles.Trajectory.UserData(13),'XData',[V5G(1),V6G(1)],'YData',[V5G(2),V6G(2)]);
+        set(handles.Trajectory.UserData(14),'XData',[V7G(1),V6G(1)],'YData',[V7G(2),V6G(2)]);
+        set(handles.Trajectory.UserData(15),'XData',[V7G(1),V8G(1)],'YData',[V7G(2),V8G(2)]);
+        set(handles.Trajectory.UserData(16),'XData',[V1G(1),V8G(1)],'YData',[V1G(2),V8G(2)]);
         
+        %set(TrajectoryDsp,'UserData',line([V1G(1),V2G(1)],[V1G(2),V2G(2)]));
+        %set(TrajectoryDsp,'UserData',line([V3G(1),V2G(1)],[V3G(2),V2G(2)]));
+        %set(TrajectoryDsp,'UserData',line([V3G(1),V4G(1)],[V3G(2),V4G(2)]));
+        %set(TrajectoryDsp,'UserData',line([V5G(1),V4G(1)],[V5G(2),V4G(2)]));
+        %set(TrajectoryDsp,'UserData',line([V5G(1),V6G(1)],[V5G(2),V6G(2)]));
+        %set(TrajectoryDsp,'UserData',line([V7G(1),V6G(1)],[V7G(2),V6G(2)]));
+        %set(TrajectoryDsp,'UserData',line([V7G(1),V8G(1)],[V7G(2),V8G(2)]));
+        %set(TrajectoryDsp,'UserData',line([V1G(1),V8G(1)],[V1G(2),V8G(2)]));
+        
+        drawnow
+        pause(0.1)
+    
     end
     
     %泊车结束
@@ -295,17 +342,14 @@ function pushbutton1_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+global stop
+
+if get(handles.pushbutton1, 'value') 
+    stop = 1;
+    fprintf('stop');
 end
+
 
 % --- If Enable == 'on', executes on mouse press in 5 pixel border.
 % --- Otherwise, executes on mouse press in 5 pixel border or over pushbutton1.
-
-function pushbutton1_ButtonDownFcn(hObject, eventdata, handles)  
-%%结束泊车
-% hObject    handle to pushbutton1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
- global stop
- stop=1;
- fprintf('stop')
 end
