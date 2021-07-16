@@ -53,75 +53,12 @@ function parking_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to parking_GUI (see VARARGIN)
 
+global stop;
+stop = 0;
 
-% 声明一些全局变量
-
-% 汽车运动信息
-global VehicleSpeed % 车速
-global angle        % 方向盘转角
-global LocalX       % 纵向位置
-global LocalY       % 横向位置
-global LocalVx      %纵向速度
-global LocalVy      %横向速度
-global LocalAx      %纵向加速度
-global LocalAy      %横向加速度
-global CollisonDistance   %碰撞距离
-global yError             %横向偏差
-global xError             %纵向偏差
-global HeadingAngelError  %航向角偏差
-global Time         %泊车时间
-global t            %计时变量
-global score        %泊车评分
-%参考车位置
-global RefPose1
-global RefPose2
-global RefPose3
-global RefPose4
-%障碍车位置
-global ObstaclePose1
-global ObstaclePose2
-global ObstaclePose3
-global ObstaclePose4
-%车辆信息
-global Yaw         %行驶偏航角
-global stop        %停车结束控制
-global stopflag    %泊车时间标志位
-
-global tempAngle   %用于保存上一时刻方向盘转角
-
-%变量初始化
-VehicleSpeed = 0;
-LocalX = 0;       
-LocalY = 0;    
-LocalVx = 0;
-LocalVy = 0;
-LocalAx = 0;
-LocalAy = 0;
-CollisonDistance = 0;  
-yError = 0;      
-xError = 0;       
-HeadingAngelError = 0;
-Time = 0;
-t = 0;
-score = 0;
-RefPose1 = 0;
-RefPose2 = 0;
-RefPose3 = 0;
-RefPose4 = 0;
-
-ObstaclePose1 = 0;
-ObstaclePose2 = 0;
-ObstaclePose3 = 0;
-ObstaclePose4 = 0;
-
-Yaw = 0;
-stop = 0;  
-stopflag = 0;
-tempAngle = 0;
 rosshutdown;
 rosinit;
-pause(2);
-
+pause(1);
 
 % Choose default command line output for parking_GUI
 handles.output = hObject;
@@ -176,7 +113,13 @@ global stop;
     
     angle = myvector(2);
     sub_steering_angle = rossubscriber('/steering_angle_deg', 'apa_msgs/SteeringAngleStamped',{@SteeringAngleCallback, angle});
-    angleDsp= findobj(0, 'tag', 'angle');
+
+    axes(handles.Trajectory);
+    set(handles.Trajectory,'XLim',[0, 10],'YLim',[-4, 4]);
+    set(handles.Trajectory,'UserData',[line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
+        line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
+        line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
+        line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0])]);
     
     %泊车过程（while（1）循环内）
     while(1)
@@ -236,33 +179,58 @@ global stop;
         %纵向加速度        
         set(handles.Localax,'string',num2str(latest_A_record(2)));
         
+%         cla(handles.Trajectory);
+        axes(handles.Trajectory);
+
+        
+        
         %绘制目标车位
-        axes(handles.Trajectory)
-        set(handles.Trajectory,'UserData',line([RefPose1(2),RefPose2(2)],[RefPose1(3),RefPose2(3)],'Color','red')); %%X坐标，Y坐标
-        set(handles.Trajectory,'UserData',line([ObstaclePose1(2),ObstaclePose2(2)],[ObstaclePose1(3),ObstaclePose2(3)],'Color','red'));
-        set(handles.Trajectory,'UserData',line([ObstaclePose1(2),RefPose1(2)],[ObstaclePose1(3),RefPose1(3)],'Color','red'));
-        set(handles.Trajectory,'UserData',line([ObstaclePose2(2),RefPose2(2)],[ObstaclePose2(3),RefPose2(3)],'Color','red'));
-    
+        set(handles.Trajectory.UserData(1),'XData',[RefPose1(2),RefPose2(2)],'YData',[RefPose1(3),RefPose2(3)],'Color','red');
+        set(handles.Trajectory.UserData(2),'XData',[ObstaclePose1(2),ObstaclePose2(2)],'YData',[ObstaclePose1(3),ObstaclePose2(3)],'Color','red');
+        set(handles.Trajectory.UserData(3),'XData',[ObstaclePose1(2),RefPose1(2)],'YData',[ObstaclePose1(3),RefPose1(3)],'Color','red');
+        set(handles.Trajectory.UserData(4),'XData',[ObstaclePose2(2),RefPose2(2)],'YData',[ObstaclePose2(3),RefPose2(3)],'Color','red');
+        
+%         set(handles.Trajectory,'UserData',line([RefPose1(2),RefPose2(2)],[RefPose1(3),RefPose2(3)],'Color','red')); %%X坐标，Y坐标
+%         set(handles.Trajectory,'UserData',line([ObstaclePose1(2),ObstaclePose2(2)],[ObstaclePose1(3),ObstaclePose2(3)],'Color','red'));
+%         set(handles.Trajectory,'UserData',line([ObstaclePose1(2),RefPose1(2)],[ObstaclePose1(3),RefPose1(3)],'Color','red'));
+%         set(handles.Trajectory,'UserData',line([ObstaclePose2(2),RefPose2(2)],[ObstaclePose2(3),RefPose2(3)],'Color','red'));
+
         %绘制参考车位(前车)
-        set(handles.Trajectory,'UserData',line([RefPose1(2),RefPose3(2)],[RefPose1(3),RefPose3(3)],'Color','black'));
-        set(handles.Trajectory,'UserData',line([RefPose2(2),RefPose4(2)],[RefPose2(3),RefPose4(3)],'Color','black'));
-    
+        set(handles.Trajectory.UserData(5),'XData',[RefPose1(2),RefPose3(2)],'YData',[RefPose1(3),RefPose3(3)],'Color','black');
+        set(handles.Trajectory.UserData(6),'XData',[RefPose2(2),RefPose4(2)],'YData',[RefPose2(3),RefPose4(3)],'Color','black');
+        
+%         set(handles.Trajectory,'UserData',line([RefPose1(2),RefPose3(2)],[RefPose1(3),RefPose3(3)],'Color','black'));
+%         set(handles.Trajectory,'UserData',line([RefPose2(2),RefPose4(2)],[RefPose2(3),RefPose4(3)],'Color','black'));
+        
         %绘制障碍车位(后车)
-        set(handles.Trajectory,'UserData',line([ObstaclePose1(2),ObstaclePose3(2)],[ObstaclePose1(3),ObstaclePose3(3)],'Color','black'));
-        set(handles.Trajectory,'UserData',line([ObstaclePose2(2),ObstaclePose4(2)],[ObstaclePose2(3),ObstaclePose4(3)],'Color','black'));
-    
+        set(handles.Trajectory.UserData(7),'XData',[ObstaclePose1(2),ObstaclePose3(2)],'YData',[ObstaclePose1(3),ObstaclePose3(3)],'Color','black');
+        set(handles.Trajectory.UserData(8),'XData',[ObstaclePose2(2),ObstaclePose4(2)],'YData',[ObstaclePose2(3),ObstaclePose4(3)],'Color','black');
+        
+%         set(handles.Trajectory,'UserData',line([ObstaclePose1(2),ObstaclePose3(2)],[ObstaclePose1(3),ObstaclePose3(3)],'Color','black'));
+%         set(handles.Trajectory,'UserData',line([ObstaclePose2(2),ObstaclePose4(2)],[ObstaclePose2(3),ObstaclePose4(3)],'Color','black'));
+        
         %绘制车辆模型，以长方形框表示实时位置
-        set(handles.Trajectory,'UserData',line([V1G(1),V2G(1)],[V1G(2),V2G(2)]));
-        set(handles.Trajectory,'UserData',line([V3G(1),V2G(1)],[V3G(2),V2G(2)]));
-        set(handles.Trajectory,'UserData',line([V3G(1),V4G(1)],[V3G(2),V4G(2)]));
-        set(handles.Trajectory,'UserData',line([V5G(1),V4G(1)],[V5G(2),V4G(2)]));
-        set(handles.Trajectory,'UserData',line([V5G(1),V6G(1)],[V5G(2),V6G(2)]));
-        set(handles.Trajectory,'UserData',line([V7G(1),V6G(1)],[V7G(2),V6G(2)]));
-        set(handles.Trajectory,'UserData',line([V7G(1),V8G(1)],[V7G(2),V8G(2)]));
-        set(handles.Trajectory,'UserData',line([V1G(1),V8G(1)],[V1G(2),V8G(2)]));
+        set(handles.Trajectory.UserData(9),'XData',[V1G(1),V2G(1)],'YData',[V1G(2),V2G(2)]);
+        set(handles.Trajectory.UserData(10),'XData',[V3G(1),V2G(1)],'YData',[V3G(2),V2G(2)]);
+        set(handles.Trajectory.UserData(11),'XData',[V3G(1),V4G(1)],'YData',[V3G(2),V4G(2)]);
+        set(handles.Trajectory.UserData(12),'XData',[V5G(1),V4G(1)],'YData',[V5G(2),V4G(2)]);
+        set(handles.Trajectory.UserData(13),'XData',[V5G(1),V6G(1)],'YData',[V5G(2),V6G(2)]);
+        set(handles.Trajectory.UserData(14),'XData',[V7G(1),V6G(1)],'YData',[V7G(2),V6G(2)]);
+        set(handles.Trajectory.UserData(15),'XData',[V7G(1),V8G(1)],'YData',[V7G(2),V8G(2)]);
+        set(handles.Trajectory.UserData(16),'XData',[V1G(1),V8G(1)],'YData',[V1G(2),V8G(2)]);
         
+        
+%         set(handles.Trajectory,'UserData',line([V1G(1),V2G(1)],[V1G(2),V2G(2)]));
+%         set(handles.Trajectory,'UserData',line([V3G(1),V2G(1)],[V3G(2),V2G(2)]));
+%         set(handles.Trajectory,'UserData',line([V3G(1),V4G(1)],[V3G(2),V4G(2)]));
+%         set(handles.Trajectory,'UserData',line([V5G(1),V4G(1)],[V5G(2),V4G(2)]));
+%         set(handles.Trajectory,'UserData',line([V5G(1),V6G(1)],[V5G(2),V6G(2)]));
+%         set(handles.Trajectory,'UserData',line([V7G(1),V6G(1)],[V7G(2),V6G(2)]));
+%         set(handles.Trajectory,'UserData',line([V7G(1),V8G(1)],[V7G(2),V8G(2)]));
+%         set(handles.Trajectory,'UserData',line([V1G(1),V8G(1)],[V1G(2),V8G(2)]));
+
         drawnow
-        
+
     end
     
     %泊车结束
