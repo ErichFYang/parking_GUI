@@ -15,8 +15,10 @@ function Vehicle_pose2DCallback(~,message,buffer1,buffer2,buffer3)
 % LocalY = [time1,Y];
 LocalX = message.Pose.Pose.Position.X;
 LocalY = message.Pose.Pose.Position.Y;
-Yaw = atan(message.Pose.Pose.Orientation.Y/message.Pose.Pose.Orientation.X);
+q = [message.Pose.Pose.Orientation.W message.Pose.Pose.Orientation.X ...
+        message.Pose.Pose.Orientation.Y message.Pose.Pose.Orientation.Z];
+Yaw = quat2eul(q);
 buffer1.push_back([message.Header.Stamp.seconds,LocalX]);
 buffer2.push_back([message.Header.Stamp.seconds,LocalY]);
-buffer3.push_back([message.Header.Stamp.s,Yaw];
+buffer3.push_back([message.Header.Stamp.seconds,Yaw(1)]);
 end
