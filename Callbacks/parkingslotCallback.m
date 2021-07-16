@@ -1,15 +1,15 @@
 %%parkingslotCallback
 
 function parkingslotCallback(~,message,buffer1,buffer2,buffer3,buffer4,buffer5,buffer6,buffer7,buffer8,buffer9)
-global RefPose1
-global RefPose2
-global RefPose3
-global RefPose4
-global RefPoseTheta
-global ObstaclePose1
-global ObstaclePose2
-global ObstaclePose3
-global ObstaclePose4
+% global RefPose1
+% global RefPose2
+% global RefPose3
+% global RefPose4
+% global RefPoseTheta
+% global ObstaclePose1
+% global ObstaclePose2
+% global ObstaclePose3
+% global ObstaclePose4
 %parking_slot_msgStructs = readMessages(message,'DataFormat','struct');
 %RefPoseX = cellfun(@(Ref) double(Ref.RefPose.X),parking_slot_msgStructs);
 %RefPoseY = cellfun(@(Ref) double(Ref.RefPose.Y),parking_slot_msgStructs);
