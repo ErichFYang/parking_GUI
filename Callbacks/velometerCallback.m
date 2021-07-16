@@ -1,8 +1,8 @@
 %velometerCallback
 
 function velometerCallback(~,message,buffer)
-global LocalVx      %纵向速度
-global LocalVy      %横向速度
+% global LocalVx      %纵向速度
+% global LocalVy      %横向速度
 %global VehicleSpeed % 车速
 
 % 
@@ -15,8 +15,8 @@ global LocalVy      %横向速度
 % LocalVy = [time3,Vy];
 % VehicleSpeed=[time3,Speed];
 
-LocalVx = [message.Header.Stamp.seconds,message.Twist.Linear.X];
-LocalVy = [message.Header.Stamp.seconds,message.Twist.Linear.Y];
+% LocalVx = [message.Header.Stamp.seconds,message.Twist.Linear.X];
+% LocalVy = [message.Header.Stamp.seconds,message.Twist.Linear.Y];
 Vx = message.Twist.Linear.X;
 Vy = message.Twist.Linear.Y;
 Speed=sqrt(Vx*Vx+Vy*Vy);
