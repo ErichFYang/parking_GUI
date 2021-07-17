@@ -61,17 +61,18 @@ global VehicleSpeed % 车速
 global angle        % 方向盘转角
 global LocalX       % 纵向位置
 global LocalY       % 横向位置
-global LocalVx      %纵向速度
-global LocalVy      %横向速度
-global LocalAx      %纵向加速度
-global LocalAy      %横向加速度
-global CollisonDistance   %碰撞距离
-global yError             %横向偏差
-global xError             %纵向偏差
-global HeadingAngelError  %航向角偏差
-global Time         %泊车时间
-global t            %计时变量
-global score        %泊车评分
+global LocalVx      % 纵向速度
+global LocalVy      % 横向速度
+global LocalAx      % 纵向加速度
+global LocalAy      % 横向加速度
+global CollisonDistance   % 碰撞距离
+global yError             % 横向偏差
+global xError             % 纵向偏差
+global HeadingAngleError  % 航向角偏差
+global Time         % 泊车时间
+global t            % 计时变量
+global risk_score   % 碰撞风险评分
+global score        % 泊车评分
 %参考车位置
 global RefPose1
 global RefPose2
@@ -91,6 +92,7 @@ global tempAngle   %用于保存上一时刻方向盘转角
 
 %变量初始化
 VehicleSpeed = 0;
+angle = 0;
 LocalX = 0;       
 LocalY = 0;    
 LocalVx = 0;
@@ -100,9 +102,10 @@ LocalAy = 0;
 CollisonDistance = 0;  
 yError = 0;      
 xError = 0;       
-HeadingAngelError = 0;
+HeadingAngleError = 0;
 Time = 0;
 t = 0;
+risk_score = 0;
 score = 0;
 RefPose1 = 0;
 RefPose2 = 0;
@@ -225,6 +228,9 @@ varargout{1} = handles.output;
         LocalY = localy.back();
         Yaw = yaw.back();
         
+        global risk_score
+        risk_score = risk_score+ Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle);
+        
         %记录当前车辆位置
           %求从车身坐标系到全局坐标系的刚体变换矩阵
         T = [cos(Yaw(2)), -sin(Yaw(2)), LocalX(2); sin(RefPoseTheta(2)), cos(RefPoseTheta(2)), LocalY(2); 0, 0, 1]; 
@@ -248,8 +254,23 @@ varargout{1} = handles.output;
         set(handles.Localay,'string',num2str(latest_A_record(3)));
         %纵向加速度        
         set(LocalaxDsp,'string',num2str(latest_A_record(2)));
+        %横向偏差
+        global yError
+        yError = LocalY(2) - (RefPose1(2) + RefPose2(2) + ObstaclePose1(2) + ObstaclePose2(2))/4;
+        yErrorDsp= findobj(0, 'tag', 'yError');           
+        set(yErrorDsp,'string',num2str(yError));    
+        %纵向偏差
+        global xError
+        xError = LocalX(2) - (ObstaclePose1(2) + RefPose1(2) + ObstaclePose2() + RefPose2(2))/4;
+        xErrorDsp= findobj(0, 'tag', 'xError');           
+        set(xErrorDsp,'string',num2str(xError));    
+        %航向角偏差
+        global HeadingAngleError
+        HeadingAngleError = Yaw-RefPoseTheta;
+        HeadingAngleErrorDsp = findobj(0, 'tag', 'HeadingAngleError');   
+        set(HeadingAngleErrorDsp,'string',num2str(HeadingAngleError));        
         pause(0.01);
-        
+                
         %draw parking slot 
         TrajectoryDsp= findobj(0, 'tag', 'Trajectory');
         axes(handles.Trajectory);
@@ -299,40 +320,40 @@ varargout{1} = handles.output;
         %set(TrajectoryDsp,'UserData',line([V7G(1),V8G(1)],[V7G(2),V8G(2)]));
         %set(TrajectoryDsp,'UserData',line([V1G(1),V8G(1)],[V1G(2),V8G(2)]));
         
+        global Time
+        Time = latest_speed_record(1);
+        
         drawnow
         pause(0.1)
     
     end
     
     %泊车结束
+    %泊车时间评分
+    Time_score = T_Assessment(Time);
+    %姿态精度评分
+    acc_score = acc_Assessment(xError,yError,HeadingAngleError);
+    %舒适度评分
+    LocalAx = LocalA(:,2);   %纵向加速度
+    LocalAy = LocalA(:,3);   %横向加速度
+    com_score = com_Assessment(LocalAx,LocalAy);
+    %原地转向时长评分
+    rot_score = rot_Assessment(VehicleSpeed,angle);
+    
+    %计算泊车评分    
+    global score
+    score = eva(Time_score,acc_score,risk_score,com_score,rot_score);
+    %显示泊车时间与评分
+    TimeDsp= findobj(0, 'tag', 'Time');
+    set(TimeDsp,'string',num2str(Time));
+    scoreDsp= findobj(0, 'tag', 'score');
+    set(scoreDsp,'string',num2str(score));
+    
+
      %碰撞距离
     %CollisonDistance=  ;           ????????
 %     CollisonDistanceDsp= findobj(0, 'tag', 'CollisonDistance');   
 %     set(CollisonDistanceDsp,'string',num2str(CollisonDistance));
-    
-%     %横向偏差
-%     %yError = LocalY(1,2) - (RefPose1(3) + RefPose2(3) + ObstaclePose1(3) + ObstaclePose2(3))/4;
-%     yErrorDsp= findobj(0, 'tag', 'yError');           
-%     set(yErrorDsp,'string',num2str(yError));
-    
-%     %纵向偏差
-%     %xError = LocalX(1,2) - (ObstaclePose1(1,1) + RefPose1(1,1) + ObstaclePose2(1,1) + RefPose2(1,1))/4;
-%     xErrorDsp= findobj(0, 'tag', 'xError');           
-%     set(xErrorDsp,'string',num2str(xError)); 
-    
-%     %航向角偏差
-%     %HeadingAngelError = Yaw-RefPoseTheta;
-%     HeadingAngelErrorDsp = findobj(0, 'tag', 'HeadingAngelError');   
-%     set(HeadingAngelErrorDsp,'string',num2str(HeadingAngelError));
-
-    %计算泊车评分
-    
-    
-    %显示泊车时间与评分
-%     TimeDsp= findobj(0, 'tag', 'Time');
-%     set(TimeDsp,'string',num2str(Time));
-%     scoreDsp= findobj(0, 'tag', 'score');
-%     set(scoreDsp,'string',num2str(score));
     
 end
 
