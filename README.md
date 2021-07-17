@@ -33,7 +33,7 @@ velometerCallback 读取车辆速度信息（横、纵向，计算车速）
 
 
 主程序
-parking_GUI 
+parking_GUI 泊车可视化界面
 
 
 
