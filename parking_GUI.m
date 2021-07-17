@@ -228,8 +228,26 @@ varargout{1} = handles.output;
         LocalY = localy.back();
         Yaw = yaw.back();
         
+        %Õû³µ²ÎÊý£º
+        vehicle_width = 1.551; %³µ¿í
+        vehicle_length = 3.569; %³µ³¤
+        rear_overhang = 0.544; %ºóÐü
+        front_overhang = 0.72; %Ç°Ðü
+        wheel_base = 2.305;%Öá¾à
+        front_wheel_track = 1.324;%Ç°ÂÖ¾à
+        rear_wheel_track = 1.292;%ºóÂÖ¾à
+        front_vehicle_width = 0.791; %¶ÔÓ¦°Ë±ßÐÎf±ß
+        rear_vehicle_width = 0.821; %¶ÔÓ¦°Ë±ßÐÎc±ß
+
+        Vehicle.Wf = front_vehicle_width;
+        Vehicle.Wr = rear_vehicle_width;
+        Vehicle.Lf = front_overhang + wheel_base;
+        Vehicle.Lr = rear_overhang;
+        Pos_Car=[LocalX(2);LocalY(2);Yaw(2)];
         global risk_score
-        risk_score = risk_score+ Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle);
+        rfp1=[RefPose1(2),RefPose1(3)]; rfp2=[RefPose2(2),RefPose2(3)];
+        obp1=[ObstaclePose1(2),ObstaclePose1(3)]; obp2=[ObstaclePose2(2),ObstaclePose2(3)]; 
+        risk_score = risk_score+ Risk_Assessment(rfp1,rfp2,obp1,obp2,Pos_Car,Vehicle);
         
         %记录当前车辆位置
           %求从车身坐标系到全局坐标系的刚体变换矩阵
