@@ -23,7 +23,7 @@ function varargout = parking_GUI(varargin)
 
 % Edit the above text to modify the response to help parking_GUI
 
-% Last Modified by GUIDE v2.5 19-Jul-2021 17:05:56
+% Last Modified by GUIDE v2.5 19-Jul-2021 20:47:39
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -85,11 +85,13 @@ function varargout = parking_GUI_OutputFcn(hObject, eventdata, handles)
 varargout{1} = handles.output;
 global stop;   % stop recording
 global exit;  % close GUI
-global tr_xlim;  %xlim of handles.Trajectory
-global tr_ylim;  %ylim of handles.Trajectory
+global tr_xlim;  % xlim of handles.Trajectory
+global tr_ylim;  % ylim of handles.Trajectory
+global flag_loop2;  % to show if the program run in loop2
 
 stop = 1;   
 exit = 0;  
+flag_loop2 = 0;
 
 % main
 while(~exit)
@@ -129,7 +131,6 @@ while(~exit)
     
     %Timer
     setlog(handles, '话题订阅成功！');
-    time_start = now;
     
     %Display modules initialization
     axes(handles.Trajectory);
@@ -139,11 +140,16 @@ while(~exit)
         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0])]);
+    
+    set(handles.Time, 'String', '');
     end
     
     %泊车过程（while（1）循环内）
     while ~(stop||exit)
-        
+        if ~flag_loop2
+            time_start = now;
+            flag_loop2 = 1;
+        end
         % Get message
         [latest_angle_record, angle_indice] = getmsg(angle, angle_indice, handles);
         [latest_speed_record, VehicleSpeed_indice] = getmsg(VehicleSpeed, VehicleSpeed_indice, handles);
@@ -233,32 +239,41 @@ while(~exit)
         pause(0.1);
     end
     
-    %泊车结束
-     %碰撞距离
-    %CollisonDistance=  ;           ????????
-%     CollisonDistanceDsp= findobj(0, 'tag', 'CollisonDistance');   
-%     set(CollisonDistanceDsp,'string',num2str(CollisonDistance));
- 
-%     %纵向偏差
-%     xError = VCG(1) - (ObstaclePose1(1,1) + RefPose1(1,1) + ObstaclePose2(1,1) + RefPose2(1,1))/4;   
-%     set(handles.xError,'string',num2str(xError)); 
-% 
-%     %横向偏差
-%     yError = VCG(2) - (RefPose1(3) + RefPose2(3) + ObstaclePose1(3) + ObstaclePose2(3))/4;       
-%     set(handles.yError,'string',num2str(yError));
-%         
-%     %航向角偏差
-%     HeadingAngelError = Yaw-RefPoseTheta;
-%     set(handles.HeadingAngelError,'string',num2str(HeadingAngelError));
-% 
-%     %计算泊车评分
-%     acc_score = acc_Assessment(xError,yError,HeadingAngelError);
-    
-    %显示泊车时间与评分
-%     TimeDsp= findobj(0, 'tag', 'Time');
-%     set(TimeDsp,'string',num2str(Time));
-%     scoreDsp= findobj(0, 'tag', 'score');
-%     set(scoreDsp,'string',num2str(score));
+    if flag_loop2 && ~exit
+        time_stop = now;
+        sub_steering_angle = 0;
+        velometer = 0;
+        imu = 0;
+        parking_slot = 0;
+        Vehicle_pose2D = 0;
+        parkingtime = caltime(time_start, time_stop);
+        flag_loop2 = 0;
+        %泊车结束
+         %碰撞距离
+        %CollisonDistance=  ;           ????????
+    %     CollisonDistanceDsp= findobj(0, 'tag', 'CollisonDistance');   
+    %     set(CollisonDistanceDsp,'string',num2str(CollisonDistance));
+
+    %     %纵向偏差
+    %     xError = VCG(1) - (ObstaclePose1(1,1) + RefPose1(1,1) + ObstaclePose2(1,1) + RefPose2(1,1))/4;   
+    %     set(handles.xError,'string',num2str(xError)); 
+    % 
+    %     %横向偏差
+    %     yError = VCG(2) - (RefPose1(3) + RefPose2(3) + ObstaclePose1(3) + ObstaclePose2(3))/4;       
+    %     set(handles.yError,'string',num2str(yError));
+    %         
+    %     %航向角偏差
+    %     HeadingAngelError = Yaw-RefPoseTheta;
+    %     set(handles.HeadingAngelError,'string',num2str(HeadingAngelError));
+    % 
+    %     %计算泊车评分
+    %     acc_score = acc_Assessment(xError,yError,HeadingAngelError);
+
+        %显示泊车时间与评分
+        set(handles.Time,'string',[num2str(parkingtime), ' s']);
+    %     scoreDsp= findobj(0, 'tag', 'score');
+    %     set(scoreDsp,'string',num2str(score));
+    end
 
 end    
 
@@ -294,6 +309,44 @@ function setlog(handles, str)
     PubArrayText = horzcat(string, PubArrayText);
     set(handles.Notice,'String',PubArrayText);
 
+% --- Calculate parking time
+function time = caltime(t1, t2)
+    timestr = datestr(t2 - t1, 'HH:MM:SS.FFF');
+    timevec = datevec(timestr);
+    time = (timevec(4)*60 + timevec(5))*60 + timevec(6);
+    
+function [xmin, xmax] = inorder(xmin, xmax)
+    if xmin > xmax
+        t = xmax;
+        xmax = xmin;
+        xmin = t;
+    elseif xmin == xmax
+        xmax = xmin + 1;
+    end
+    
+
+% --- Executes on button press in push_paraset.
+function push_paraset_Callback(hObject, eventdata, handles)
+% hObject    handle to push_paraset (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Xlim & Ylim for trajectory display    
+global tr_xlim
+global tr_ylim
+    
+if get(handles.push_paraset, 'value')
+    set(handles.ui_paraset, 'Visible', 0);
+    set(handles.uipanel1, 'Visible', 1);
+end
+xmin = str2num(get(handles.set_xmin,'String'));
+xmax = str2num(get(handles.set_xmax,'String'));
+ymin = str2num(get(handles.set_ymin,'String'));
+ymax = str2num(get(handles.set_ymax,'String'));
+[xmin, xmax] = inorder(xmin, xmax);
+[ymin, ymax] = inorder(ymin, ymax);
+tr_xlim = [xmin, xmax];
+tr_ylim = [ymin, ymax];
 
 % --- Executes on button press in push_start.
 function push_start_Callback(hObject, eventdata, handles)
@@ -335,27 +388,6 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 
 % Hint: delete(hObject) closes the figure
 delete(hObject);
-
-
-% --- Executes on button press in push_paraset.
-function push_paraset_Callback(hObject, eventdata, handles)
-% hObject    handle to push_paraset (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Xlim & Ylim for trajectory display    
-global tr_xlim
-global tr_ylim
-    
-if get(handles.push_paraset, 'value')
-    set(handles.ui_paraset, 'Visible', 0);
-    set(handles.uipanel1, 'Visible', 1);
-end
-
-tr_xlim = [str2num(get(handles.set_xmin,'String')), str2num(get(handles.set_xmax,'String'))];
-tr_ylim = [str2num(get(handles.set_ymin,'String')), str2num(get(handles.set_ymax,'String'))];
-    
-
 
 function set_xmin_Callback(hObject, eventdata, handles)
 % hObject    handle to set_xmin (see GCBO)
@@ -445,4 +477,25 @@ function set_ymax_CreateFcn(hObject, eventdata, handles)
 %       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in push_reset.
+function push_reset_Callback(hObject, eventdata, handles)
+% hObject    handle to push_reset (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global stop;
+global flag_loop2;
+global PubArrayText;
+
+if get(handles.push_reset, 'value')
+    stop = 1;
+    flag_loop2 = 0;
+    PubArrayText = sprintf('%s\n','');
+    set(handles.ui_paraset, 'Visible', 1);
+    set(handles.uipanel1, 'Visible', 0);
+    set(handles.push_start,'String','开始泊车');
+    set(handles.Time, 'String', '');
+    set(handles.Notice,'String',PubArrayText);
 end
