@@ -1,0 +1,6 @@
+acc_Assessment 停车姿态精度
+com_Assessment 舒适性
+rot_Assessment 原地转向时长
+T_Assessment 泊车入位总时长
+RiskAssess 碰撞风险
+eva 最终得分计算

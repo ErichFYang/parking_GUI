@@ -67,8 +67,7 @@ handles.output = hObject;
 % Update handles structure
 guidata(hObject, handles);
 
-set(handles.ui_paraset, 'Visible', 1);
-set(handles.uipanel1, 'Visible', 0);
+set()
 
 % UIWAIT makes parking_GUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -85,16 +84,13 @@ function varargout = parking_GUI_OutputFcn(hObject, eventdata, handles)
 varargout{1} = handles.output;
 global stop;   % stop recording
 global exit;  % close GUI
-global tr_xlim;  %xlim of handles.Trajectory
-global tr_ylim;  %ylim of handles.Trajectory
-
 stop = 1;   
 exit = 0;  
 
 % main
 while(~exit)
     pause(0.1);
-    if ~(stop||exit)
+    if ~stop
 %%泊车过程中的读取信息与界面交互
     %创建订阅器与选择显示模块
     angle = myvector(2);
@@ -134,7 +130,7 @@ while(~exit)
     %Display modules initialization
     axes(handles.Trajectory);
     cla(handles.Trajectory);
-    set(handles.Trajectory,'XLim',tr_xlim,'YLim',tr_ylim);
+    set(handles.Trajectory,'XLim',[0, 16],'YLim',[-4, 1]);
     set(handles.Trajectory,'UserData',[line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
@@ -142,7 +138,7 @@ while(~exit)
     end
     
     %泊车过程（while（1）循环内）
-    while ~(stop||exit)
+    while(~stop)
         
         % Get message
         [latest_angle_record, angle_indice] = getmsg(angle, angle_indice, handles);
@@ -230,7 +226,7 @@ while(~exit)
     %         set(handles.Trajectory,'UserData',line([V1G(1),V8G(1)],[V1G(2),V8G(2)]));
         end
         drawnow
-        pause(0.1);
+        pause(0.15);
     end
     
     %泊车结束
@@ -300,31 +296,30 @@ function push_start_Callback(hObject, eventdata, handles)
 % hObject    handle to push_start (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global stop
+    global stop
 
-if get(handles.push_start, 'value')
-    stop = ~stop;
-    if ~stop
-        set(handles.push_start,'String','结束泊车');
-        setlog(handles, '泊车开始。');
-    else
-        set(handles.push_start,'String','开始泊车');
-        setlog(handles, '泊车结束。');
+    if get(handles.push_start, 'value') 
+        stop = ~stop;
+        if ~stop
+            set(handles.push_start,'String','结束泊车');
+            setlog(handles, '泊车开始。');
+        else
+            set(handles.push_start,'String','开始泊车');
+            setlog(handles, '泊车结束。');
+        end
     end
-end
 
 % --- Executes on button press in push_exit.
 function push_exit_Callback(hObject, eventdata, handles)
 % hObject    handle to push_exit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global exit
-
-if get(handles.push_exit, 'value')
-    setlog(handles, '正在退出......');
-    exit = 1;
-end
-close(gcf)
+    global exit
+    if get(handles.push_exit, 'value') 
+        setlog(handles, '正在退出......');
+        exit = 1;
+    end
+    close(gcf)
 
 
 % --- Executes when user attempts to close figure1.
@@ -343,18 +338,6 @@ function push_paraset_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Xlim & Ylim for trajectory display    
-global tr_xlim
-global tr_ylim
-    
-if get(handles.push_paraset, 'value')
-    set(handles.ui_paraset, 'Visible', 0);
-    set(handles.uipanel1, 'Visible', 1);
-end
-
-tr_xlim = [str2num(get(handles.set_xmin,'String')), str2num(get(handles.set_xmax,'String'))];
-tr_ylim = [str2num(get(handles.set_ymin,'String')), str2num(get(handles.set_ymax,'String'))];
-    
 
 
 function set_xmin_Callback(hObject, eventdata, handles)
