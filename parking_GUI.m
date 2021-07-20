@@ -228,16 +228,16 @@ varargout{1} = handles.output;
         LocalY = localy.back();
         Yaw = yaw.back();
         
-        %Õû³µ²ÎÊý£º
-        vehicle_width = 1.551; %³µ¿í
-        vehicle_length = 3.569; %³µ³¤
-        rear_overhang = 0.544; %ºóÐü
-        front_overhang = 0.72; %Ç°Ðü
-        wheel_base = 2.305;%Öá¾à
-        front_wheel_track = 1.324;%Ç°ÂÖ¾à
-        rear_wheel_track = 1.292;%ºóÂÖ¾à
-        front_vehicle_width = 0.791; %¶ÔÓ¦°Ë±ßÐÎf±ß
-        rear_vehicle_width = 0.821; %¶ÔÓ¦°Ë±ßÐÎc±ß
+        %整车参数
+        vehicle_width = 1.551; %车宽
+        vehicle_length = 3.569; %车长
+        rear_overhang = 0.544; %后悬
+        front_overhang = 0.72; %前悬
+        wheel_base = 2.305;%轴距
+        front_wheel_track = 1.324;%前轮距
+        rear_wheel_track = 1.292;%后轮距
+        front_vehicle_width = 0.791; %对应八边形f边
+        rear_vehicle_width = 0.821; %对应八边形c边
 
         Vehicle.Wf = front_vehicle_width;
         Vehicle.Wr = rear_vehicle_width;
@@ -274,12 +274,12 @@ varargout{1} = handles.output;
         set(LocalaxDsp,'string',num2str(latest_A_record(2)));
         %横向偏差
         global yError
-        yError = LocalY(2) - (RefPose1(2) + RefPose2(2) + ObstaclePose1(2) + ObstaclePose2(2))/4;
+        yError = LocalY(2) - (RefPose1(3) + RefPose2(3) + ObstaclePose1(3) + ObstaclePose2(3))/4;
         yErrorDsp= findobj(0, 'tag', 'yError');           
         set(yErrorDsp,'string',num2str(yError));    
         %纵向偏差
         global xError
-        xError = LocalX(2) - (ObstaclePose1(2) + RefPose1(2) + ObstaclePose2() + RefPose2(2))/4;
+        xError = LocalX(2) - (RefPose1(2) + RefPose2(2) + ObstaclePose1(2) + ObstaclePose2(2))/4;
         xErrorDsp= findobj(0, 'tag', 'xError');           
         set(xErrorDsp,'string',num2str(xError));    
         %航向角偏差
