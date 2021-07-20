@@ -5,7 +5,7 @@ global RefPose1
 global RefPose2
 global RefPose3
 global RefPose4
-%global RefPoseTheta
+global RefPoseTheta
 global ObstaclePose1
 global ObstaclePose2
 global ObstaclePose3
@@ -19,7 +19,7 @@ global PoseTheta
 %RefExtend_Y = cellfun(@(Ref) double(Ref.RefExtendY),parking_slot_msgStructs);
 RefPoseX = message.RefPose.X;
 RefPoseY = message.RefPose.Y;
-%RefPoseTheta = message.RefPose.Theta;
+RefPoseTheta = message.RefPose.Theta;
 RefExtend_X = message.RefExtendX;
 RefExtend_Y = message.RefExtendY;
 
