@@ -263,7 +263,7 @@ varargout{1} = handles.output;
         V1G = T*V1L; V2G = T*V2L; V3G = T*V3L; V4G = T*V4L;
         V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
           %求车辆质心在目标车位坐标系下的位置
-        V0 = [LocalX;LocalY;1];
+        V0 = [LocalX(2);LocalY(2);1];
         V = T0*V0; %V为车位坐标系下车辆质心位置，车位坐标系以障碍车外角点为原点
         R1 = T0*[RefPose1(2);RefPose1(3);1];  %R1为车位坐标系下参考车角点位置
         
