@@ -131,7 +131,8 @@ handles.output = hObject;
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes parking_GUI wait for user response (see UIRESUME)
+% UIWAIT makes parking_GUI wait for user response (see UIRESUME)Theta=tan((RefPoseY-ObstaclePoseY)/(RefPoseX-ObstaclePoseX));
+PoseTheta=rad2deg(Theta);
 % uiwait(handles.figure1);
 
 end
@@ -253,7 +254,7 @@ varargout{1} = handles.output;
           %求从车身坐标系到全局坐标系的刚体变换矩阵
         T = [cos(Yaw(2)), -sin(Yaw(2)), LocalX(2); sin(Yaw(2)), cos(Yaw(2)), LocalY(2); 0, 0, 1];
           %求从全局坐标系到车位坐标系的刚体变换矩阵
-        PoseTheta1=deg2rad(PoseTheta); %转化为弧度
+        PoseTheta1=deg2rad(PoseTheta(2)); %转化为弧度
         T0 = [cos(PoseTheta1),-sin(PoseTheta1),ObstaclePose1(2);sin(PoseTheta1),cos(PoseTheta1),ObstaclePose1(3);0,0,1];
           %求车辆八角点在车身坐标系下的位置
         V1L = [3.026;0.3955;1];V2L=[3.026;-0.3955;1];V3L=[2.646;-0.7755;1]; V4L=[-0.384;-0.7755;1];
