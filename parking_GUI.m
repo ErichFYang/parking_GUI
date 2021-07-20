@@ -156,9 +156,9 @@ varargout{1} = handles.output;
     Obstacle2 = myvector(3);
     Obstacle3 = myvector(3);
     Obstacle4 = myvector(3);
-    Refposetheta = myvector(2);
+    posetheta = myvector(2);
     
-    parking_slot = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped',{@parkingslotCallback,Ref1,Ref2,Ref3,Ref4,Obstacle1,Obstacle2,Obstacle3,Obstacle4,Refposetheta});
+    parking_slot = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped',{@parkingslotCallback,Ref1,Ref2,Ref3,Ref4,Obstacle1,Obstacle2,Obstacle3,Obstacle4,posetheta});
     
     LocalA = myvector(3);
     imu = rossubscriber('/imu/data', 'sensor_msgs/Imu',{@imuCallback,LocalA});
@@ -216,7 +216,7 @@ varargout{1} = handles.output;
         RefPose3 = Ref3.back(); RefPose4 = Ref4.back();
         ObstaclePose1 = Obstacle1.back(); ObstaclePose2 = Obstacle2.back(); 
         ObstaclePose3 = Obstacle3.back(); ObstaclePose4 = Obstacle4.back();
-        RefPoseTheta = Refposetheta.back();
+        PoseTheta = posetheta.back();
         if(VehicleSpeed.empty()||LocalA.empty()||localx.empty||localy.empty()||yaw.empty())
             fprintf('no vehicle data\n')
             pause(0.1);
@@ -245,8 +245,8 @@ varargout{1} = handles.output;
         Vehicle.Lr = rear_overhang;
         Pos_Car=[LocalX(2);LocalY(2);Yaw(2)];
         global risk_score
-        rfp1=[RefPose1(2),RefPose1(3)]; rfp2=[RefPose2(2),RefPose2(3)];
-        obp1=[ObstaclePose1(2),ObstaclePose1(3)]; obp2=[ObstaclePose2(2),ObstaclePose2(3)]; 
+        rfp1=[RefPose1(2);RefPose1(3)]; rfp2=[RefPose2(2);RefPose2(3)];
+        obp1=[ObstaclePose1(2);ObstaclePose1(3)]; obp2=[ObstaclePose2(2);ObstaclePose2(3)]; 
         risk_score = risk_score+ Risk_Assessment(rfp1,rfp2,obp1,obp2,Pos_Car,Vehicle);
         
         %记录当前车辆位置
