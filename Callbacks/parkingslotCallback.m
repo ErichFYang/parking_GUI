@@ -5,11 +5,12 @@ global RefPose1
 global RefPose2
 global RefPose3
 global RefPose4
-global RefPoseTheta
+%global RefPoseTheta
 global ObstaclePose1
 global ObstaclePose2
 global ObstaclePose3
 global ObstaclePose4
+global PoseTheta
 %parking_slot_msgStructs = readMessages(message,'DataFormat','struct');
 %RefPoseX = cellfun(@(Ref) double(Ref.RefPose.X),parking_slot_msgStructs);
 %RefPoseY = cellfun(@(Ref) double(Ref.RefPose.Y),parking_slot_msgStructs);
@@ -18,7 +19,7 @@ global ObstaclePose4
 %RefExtend_Y = cellfun(@(Ref) double(Ref.RefExtendY),parking_slot_msgStructs);
 RefPoseX = message.RefPose.X;
 RefPoseY = message.RefPose.Y;
-RefPoseTheta = message.RefPose.Theta;
+%RefPoseTheta = message.RefPose.Theta;
 RefExtend_X = message.RefExtendX;
 RefExtend_Y = message.RefExtendY;
 
@@ -57,5 +58,7 @@ buffer5.push_back([message.Header.Stamp.seconds, ObstaclePose1(1), ObstaclePose1
 buffer6.push_back([message.Header.Stamp.seconds, ObstaclePose2(1), ObstaclePose2(2)]);
 buffer7.push_back([message.Header.Stamp.seconds, ObstaclePose3(1), ObstaclePose3(2)]);
 buffer8.push_back([message.Header.Stamp.seconds, ObstaclePose4(1), ObstaclePose4(2)]);
-buffer9.push_back([message.Header.Stamp.seconds, RefPoseTheta]);
+Theta=tan((RefPoseY-ObstaclePoseY)/(RefPoseX-ObstaclePoseX));
+PoseTheta=rad2deg(Theta);
+buffer9.push_back([message.Header.Stamp.seconds, PoseTheta]);
 end
