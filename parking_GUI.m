@@ -251,13 +251,20 @@ varargout{1} = handles.output;
         
         %记录当前车辆位置
           %求从车身坐标系到全局坐标系的刚体变换矩阵
-        T = [cos(Yaw(2)), -sin(Yaw(2)), LocalX(2); sin(RefPoseTheta(2)), cos(RefPoseTheta(2)), LocalY(2); 0, 0, 1]; 
+        T = [cos(Yaw(2)), -sin(Yaw(2)), LocalX(2); sin(Yaw(2)), cos(Yaw(2)), LocalY(2); 0, 0, 1];
+          %求从全局坐标系到车位坐标系的刚体变换矩阵
+        PoseTheta1=deg2rad(PoseTheta); %转化为弧度
+        T0 = [cos(PoseTheta1),-sin(PoseTheta1),ObstaclePose1(2);sin(PoseTheta1),cos(PoseTheta1),ObstaclePose1(3);0,0,1];
           %求车辆八角点在车身坐标系下的位置
         V1L = [3.026;0.3955;1];V2L=[3.026;-0.3955;1];V3L=[2.646;-0.7755;1]; V4L=[-0.384;-0.7755;1];
         V5L = [-0.544;-0.4105;1]; V6L = [-0.544;0.4105;1]; V7L = [-0.384;0.7755;1]; V8L = [2.646;0.7755;1];
           %求车辆八角点在全局坐标系下的位置
         V1G = T*V1L; V2G = T*V2L; V3G = T*V3L; V4G = T*V4L;
         V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
+          %求车辆质心在目标车位坐标系下的位置
+        V0 = [LocalX;LocalY;1];
+        V = T0*V0; %V为车位坐标系下车辆质心位置，车位坐标系以障碍车外角点为原点
+        R1 = T0*[RefPose1(2);RefPose1(3);1];  %R1为车位坐标系下参考车角点位置
         
         %fprintf('current log length of steering_angle: %d\nlatest steering_angle: %f deg\n', angle.size(), latest_angle_record(2));
         %fprintf('current log length of vehicle_speed: %d\nlatest vehicle_speed: %f deg\n', VehicleSpeed.size(), latest_speed_record(2));
@@ -272,19 +279,25 @@ varargout{1} = handles.output;
         set(handles.Localay,'string',num2str(latest_A_record(3)));
         %纵向加速度        
         set(LocalaxDsp,'string',num2str(latest_A_record(2)));
+        
         %横向偏差
         global yError
-        yError = LocalY(2) - (RefPose1(3) + RefPose2(3) + ObstaclePose1(3) + ObstaclePose2(3))/4;
+        %yError = LocalY(2) - (RefPose1(3) + RefPose2(3) + ObstaclePose1(3) + ObstaclePose2(3))/4;
+        h = abs(V(2));
+        yError = abs(h-0.8);
         yErrorDsp= findobj(0, 'tag', 'yError');           
         set(yErrorDsp,'string',num2str(yError));    
         %纵向偏差
         global xError
-        xError = LocalX(2) - (RefPose1(2) + RefPose2(2) + ObstaclePose1(2) + ObstaclePose2(2))/4;
+        %xError = LocalX(2) - (RefPose1(2) + RefPose2(2) + ObstaclePose1(2) + ObstaclePose2(2))/4;
+        x_= (abs(R1(1))-3.57)/2+0.544; %标准纵向位置
+        xError = abs(LocalX(2) - x_);
         xErrorDsp= findobj(0, 'tag', 'xError');           
         set(xErrorDsp,'string',num2str(xError));    
         %航向角偏差
         global HeadingAngleError
-        HeadingAngleError = Yaw-RefPoseTheta;
+        %HeadingAngleError = Yaw-RefPoseTheta;
+        HeadingAngleError = rad2deg(Yaw(2))-PoseTheta;
         HeadingAngleErrorDsp = findobj(0, 'tag', 'HeadingAngleError');   
         set(HeadingAngleErrorDsp,'string',num2str(HeadingAngleError));        
         pause(0.01);
