@@ -23,7 +23,7 @@ function varargout = parking_GUI(varargin)
 
 % Edit the above text to modify the response to help parking_GUI
 
-% Last Modified by GUIDE v2.5 19-Jul-2021 20:47:39
+% Last Modified by GUIDE v2.5 20-Jul-2021 16:10:51
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -88,6 +88,7 @@ global exit;  % close GUI
 global tr_xlim;  % xlim of handles.Trajectory
 global tr_ylim;  % ylim of handles.Trajectory
 global flag_loop2;  % to show if the program run in loop2
+global pk_width; % width of target position
 
 stop = 1;   
 exit = 0;  
@@ -136,11 +137,13 @@ while(~exit)
     axes(handles.Trajectory);
     cla(handles.Trajectory);
     set(handles.Trajectory,'XLim',tr_xlim,'YLim',tr_ylim);
-    set(handles.Trajectory,'UserData',[line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
-        line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
-        line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
-        line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0])]);
-    
+%     for num = 1 : 36
+%     set(handles.Trajectory,'UserData',[line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
+%         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
+%         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
+%         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),... 
+%         ]);
+%     end
     set(handles.Time, 'String', '');
     end
     
@@ -174,11 +177,27 @@ while(~exit)
             V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
             VCG = T*VCL;
         end
+        if ~isnan(RefPose1)
+            % Target parking position
+            VecObs = [ObstaclePose2(2) - ObstaclePose1(2), ObstaclePose2(3) - ObstaclePose1(3)];
+            Theta_Obs = atan2(VecObs(2), VecObs(1));
+            T_Obs = [cos(Theta_Obs), -sin(Theta_Obs), ObstaclePose1(2); ...
+                sin(Theta_Obs), cos(Theta_Obs), ObstaclePose1(3); 0, 0, 1];
+            Obs_fr = T_Obs * [pk_width; 0; 1];
+            Obs_rr = T_Obs * [pk_width; -pk_width; 1];
+            Obs_fl = ObstaclePose1(2:3);
+            Obs_rl = ObstaclePose3(2:3);
+            VecRef = [RefPose2(2) - RefPose1(2), RefPose2(3) - RefPose1(3)];
+            Theta_Ref = atan2(VecRef(2), VecRef(1));
+            T_Ref = [cos(Theta_Ref), -sin(Theta_Ref), RefPose1(2); ...
+                sin(Theta_Ref), cos(Theta_Ref), RefPose1(3); 0, 0, 1];
+            Ref_rr = T_Ref * [pk_width; 0; 1];
+            Ref_fr = T_Ref * [pk_width; pk_width; 1];
+            Ref_rl = RefPose1(2:3);
+            Ref_fl = RefPose3(2:3);
+            [p_fl, p_fr, p_rr, p_rl] = calpp(Ref_rl, Ref_rr, Obs_fl, Obs_fr, pk_width);
+        end
 %% Display modules
-
-%         fprintf('current log length of steering_angle: %d\nlatest steering_angle: %f deg\n', angle.size(), latest_angle_record(2));
-%         fprintf('current log length of vehicle_speed: %d\nlatest vehicle_speed: %f deg\n', VehicleSpeed.size(), latest_speed_record(2));
-%         fprintf('current log length of Local_A: %d\nlatest Local_Ax: %f deg\nlatest Local_Ay: %f deg\n', VehicleSpeed.size(), latest_A_record(2),latest_A_record(3));
         %方向盘转角
         set(handles.angle,'string',num2str(latest_angle_record(2),'%.2f'));
         %车速
@@ -188,52 +207,119 @@ while(~exit)
         %纵向加速度        
         set(handles.Localax,'string',num2str(latest_A_record(2),'%.2f'));
         if ~isnan(RefPose1)
-        %绘制目标车位
+        %绘制算法目标车位
             axes(handles.Trajectory);
-            set(handles.Trajectory.UserData(1),'XData',[RefPose1(2),RefPose2(2)],'YData',[RefPose1(3),RefPose2(3)],'Color','red');
-            set(handles.Trajectory.UserData(2),'XData',[ObstaclePose1(2),ObstaclePose2(2)],'YData',[ObstaclePose1(3),ObstaclePose2(3)],'Color','red');
-            set(handles.Trajectory.UserData(3),'XData',[ObstaclePose1(2),RefPose1(2)],'YData',[ObstaclePose1(3),RefPose1(3)],'Color','red');
-            set(handles.Trajectory.UserData(4),'XData',[ObstaclePose2(2),RefPose2(2)],'YData',[ObstaclePose2(3),RefPose2(3)],'Color','red');
+            color = 'red';
+            linewidth = 0.5;
+            linestyle = '-';
+            
+            hold off
+            plot([p_fl(1), p_fr(1)],[p_fl(2), p_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            hold on
+            plot([p_fr(1), p_rr(1)],[p_fr(2), p_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([p_rr(1), p_rl(1)],[p_rr(2), p_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([p_rl(1), p_fl(1)],[p_rl(2), p_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            
+%             set(handles.Trajectory.UserData(1),'XData',[p_fl(1), p_fr(1)],'YData',[p_fl(2), p_fr(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(2),'XData',[p_fr(1), p_rr(1)],'YData',[p_fr(2), p_rr(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(3),'XData',[p_rr(1), p_rl(1)],'YData',[p_rr(2), p_rl(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(4),'XData',[p_rl(1), p_fl(1)],'YData',[p_rl(2), p_fl(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+        %绘制实际泊车空间
+            color = 'green';
+            linewidth = 0.5;
+            linestyle = '-';
+            
+            plot([Ref_rl(1), Ref_rr(1)],[Ref_rl(2), Ref_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([Ref_rr(1), Obs_fr(1)],[Ref_rr(2), Obs_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([Obs_fr(1), Obs_fl(1)],[Obs_fr(2), Obs_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([Obs_fl(1), Ref_rl(1)],[Obs_fl(2), Ref_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            
+%             set(handles.Trajectory.UserData(5),'XData',[Ref_rl(1), Ref_rr(1)],'YData',[Ref_rl(2), Ref_rr(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(6),'XData',[Ref_rr(1), Obs_fr(1)],'YData',[Ref_rr(2), Obs_fr(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(7),'XData',[Obs_fr(1), Obs_fl(1)],'YData',[Obs_fr(2), Obs_fl(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(8),'XData',[Obs_fl(1), Ref_rl(1)],'YData',[Obs_fl(2), Ref_rl(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
 
-    %         set(handles.Trajectory,'UserData',line([RefPose1(2),RefPose2(2)],[RefPose1(3),RefPose2(3)],'Color','red')); %%X坐标，Y坐标
-    %         set(handles.Trajectory,'UserData',line([ObstaclePose1(2),ObstaclePose2(2)],[ObstaclePose1(3),ObstaclePose2(3)],'Color','red'));
-    %         set(handles.Trajectory,'UserData',line([ObstaclePose1(2),RefPose1(2)],[ObstaclePose1(3),RefPose1(3)],'Color','red'));
-    %         set(handles.Trajectory,'UserData',line([ObstaclePose2(2),RefPose2(2)],[ObstaclePose2(3),RefPose2(3)],'Color','red'));
+        %绘制障碍物方块
+            color = 'black';
+            linewidth = 0.5;
+            linestyle = '-';           
+            plot([Obs_fl(1),Obs_rl(1)],[Obs_fl(2),Obs_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([Obs_rl(1),Obs_rr(1)],[Obs_rl(2),Obs_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([Obs_rr(1),Obs_fr(1)],[Obs_rr(2),Obs_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([Ref_rl(1),Ref_fl(1)],[Ref_rl(2),Ref_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([Ref_fl(1),Ref_fr(1)],[Ref_fl(2),Ref_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            plot([Ref_fr(1),Ref_rr(1)],[Ref_fr(2),Ref_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+            
+%             set(handles.Trajectory.UserData(9),'XData',[Obs_fl(1),Obs_rl(1)],'YData',[Obs_fl(2),Obs_rl(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(10),'XData',[Obs_rl(1),Obs_rr(1)],'YData',[Obs_rl(2),Obs_rr(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(11),'XData',[Obs_rr(1),Obs_fr(1)],'YData',[Obs_rr(2),Obs_fr(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(12),'XData',[Ref_rl(1),Ref_fl(1)],'YData',[Ref_rl(2),Ref_fl(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(13),'XData',[Ref_fl(1),Ref_fr(1)],'YData',[Ref_fl(2),Ref_fr(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+%             set(handles.Trajectory.UserData(14),'XData',[Ref_fr(1),Ref_rr(1)],'YData',[Ref_fr(2),Ref_rr(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+        %填充
+            color = 'black';
+            linewidth = 0.5;
+            linestyle = '--';
+            facealpha = 0.5;
+            fill([Obs_fl(1), Obs_fr(1), Obs_rr(1), Obs_rl(1)],[Obs_fl(2), Obs_fr(2), Obs_rr(2), Obs_rl(2)],... 
+                color,'FaceAlpha',facealpha);
+            fill([Ref_fl(1), Ref_fr(1), Ref_rr(1), Ref_rl(1)],[Ref_fl(2), Ref_fr(2), Ref_rr(2), Ref_rl(2)],... 
+                color,'FaceAlpha',facealpha);
+            set(handles.Trajectory,'XLim',tr_xlim,'YLim',tr_ylim);
+        
+%             set(handles.Trajectory.UserData(15),'XData',[Obs_fl(1)+(Obs_fr(1)-Obs_fl(1))*3/4,Obs_rr(1)+(Obs_fr(1)-Obs_rr(1))*3/4],... 
+%                 'YData',[Obs_fl(2)+(Obs_fr(2)-Obs_fl(2))*3/4,Obs_rr(2)+(Obs_fr(2)-Obs_rr(2))*3/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(16),'XData',[Obs_fl(1)+(Obs_fr(1)-Obs_fl(1))*2/4,Obs_rr(1)+(Obs_fr(1)-Obs_rr(1))*2/4],... 
+%                 'YData',[Obs_fl(2)+(Obs_fr(2)-Obs_fl(2))*2/4,Obs_rr(2)+(Obs_fr(2)-Obs_rr(2))*2/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(17),'XData',[Obs_fl(1)+(Obs_fr(1)-Obs_fl(1))*1/4,Obs_rr(1)+(Obs_fr(1)-Obs_rr(1))*1/4],... 
+%                 'YData',[Obs_fl(2)+(Obs_fr(2)-Obs_fl(2))*1/4,Obs_rr(2)+(Obs_fr(2)-Obs_rr(2))*1/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(18),'XData',[Obs_fl(1),Obs_rr(1)],'YData',[Obs_fl(2),Obs_rr(2)],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(19),'XData',[Obs_fl(1)+(Obs_rl(1)-Obs_fl(1))*1/4,Obs_rr(1)+(Obs_rl(1)-Obs_rr(1))*1/4],... 
+%                 'YData',[Obs_fl(2)+(Obs_rl(2)-Obs_fl(2))*1/4,Obs_rr(2)+(Obs_rl(2)-Obs_rr(2))*1/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(20),'XData',[Obs_fl(1)+(Obs_rl(1)-Obs_fl(1))*2/4,Obs_rr(1)+(Obs_rl(1)-Obs_rr(1))*2/4],... 
+%                 'YData',[Obs_fl(2)+(Obs_rl(2)-Obs_fl(2))*2/4,Obs_rr(2)+(Obs_rl(2)-Obs_rr(2))*2/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(21),'XData',[Obs_fl(1)+(Obs_rl(1)-Obs_fl(1))*3/4,Obs_rr(1)+(Obs_rl(1)-Obs_rr(1))*3/4],... 
+%                 'YData',[Obs_fl(2)+(Obs_rl(2)-Obs_fl(2))*3/4,Obs_rr(2)+(Obs_rl(2)-Obs_rr(2))*3/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             
+%             set(handles.Trajectory.UserData(22),'XData',[Ref_rl(1)+(Ref_rr(1)-Ref_rl(1))*3/4,Ref_rl(1)+(Ref_fl(1)-Ref_rl(1))*3/4],... 
+%                 'YData',[Ref_rl(2)+(Ref_rr(2)-Ref_rl(2))*3/4,Ref_rl(2)+(Ref_fl(2)-Ref_rl(2))*3/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(23),'XData',[Ref_rl(1)+(Ref_rr(1)-Ref_rl(1))*2/4,Ref_rl(1)+(Ref_fl(1)-Ref_rl(1))*2/4],... 
+%                 'YData',[Ref_rl(2)+(Ref_rr(2)-Ref_rl(2))*2/4,Ref_rl(2)+(Ref_fl(2)-Ref_rl(2))*2/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(24),'XData',[Ref_rl(1)+(Ref_rr(1)-Ref_rl(1))*1/4,Ref_rl(1)+(Ref_fl(1)-Ref_rl(1))*1/4],... 
+%                 'YData',[Ref_rl(2)+(Ref_rr(2)-Ref_rl(2))*1/4,Ref_rl(2)+(Ref_fl(2)-Ref_rl(2))*1/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(25),'XData',[Ref_rr(1),Ref_fl(1)],'YData',[Ref_rr(2),Ref_fl(2)],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(26),'XData',[Ref_fr(1)+(Ref_fl(1)-Ref_fr(1))*3/4,Ref_fr(1)+(Ref_rr(1)-Ref_fr(1))*3/4],... 
+%                 'YData',[Ref_fr(2)+(Ref_fl(2)-Ref_fr(2))*3/4,Ref_fr(2)+(Ref_rr(2)-Ref_fr(2))*3/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(27),'XData',[Ref_fr(1)+(Ref_fl(1)-Ref_fr(1))*2/4,Ref_fr(1)+(Ref_rr(1)-Ref_fr(1))*2/4],... 
+%                 'YData',[Ref_fr(2)+(Ref_fl(2)-Ref_fr(2))*2/4,Ref_fr(2)+(Ref_rr(2)-Ref_fr(2))*2/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+%             set(handles.Trajectory.UserData(28),'XData',[Ref_fr(1)+(Ref_fl(1)-Ref_fr(1))*1/4,Ref_fr(1)+(Ref_rr(1)-Ref_fr(1))*1/4],... 
+%                 'YData',[Ref_fr(2)+(Ref_fl(2)-Ref_fr(2))*1/4,Ref_fr(2)+(Ref_rr(2)-Ref_fr(2))*1/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
 
-            %绘制参考车位(前车)
-            set(handles.Trajectory.UserData(5),'XData',[RefPose1(2),RefPose3(2)],'YData',[RefPose1(3),RefPose3(3)],'Color','black');
-            set(handles.Trajectory.UserData(6),'XData',[RefPose2(2),RefPose4(2)],'YData',[RefPose2(3),RefPose4(3)],'Color','black');
-
-    %         set(handles.Trajectory,'UserData',line([RefPose1(2),RefPose3(2)],[RefPose1(3),RefPose3(3)],'Color','black'));
-    %         set(handles.Trajectory,'UserData',line([RefPose2(2),RefPose4(2)],[RefPose2(3),RefPose4(3)],'Color','black'));
-
-            %绘制障碍车位(后车)
-            set(handles.Trajectory.UserData(7),'XData',[ObstaclePose1(2),ObstaclePose3(2)],'YData',[ObstaclePose1(3),ObstaclePose3(3)],'Color','black');
-            set(handles.Trajectory.UserData(8),'XData',[ObstaclePose2(2),ObstaclePose4(2)],'YData',[ObstaclePose2(3),ObstaclePose4(3)],'Color','black');
-
-    %         set(handles.Trajectory,'UserData',line([ObstaclePose1(2),ObstaclePose3(2)],[ObstaclePose1(3),ObstaclePose3(3)],'Color','black'));
-    %         set(handles.Trajectory,'UserData',line([ObstaclePose2(2),ObstaclePose4(2)],[ObstaclePose2(3),ObstaclePose4(3)],'Color','black'));
         end
         if ~isnan(LocalX)
             %绘制车辆模型，以长方形框表示实时位置
-            set(handles.Trajectory.UserData(9),'XData',[V1G(1),V2G(1)],'YData',[V1G(2),V2G(2)]);
-            set(handles.Trajectory.UserData(10),'XData',[V3G(1),V2G(1)],'YData',[V3G(2),V2G(2)]);
-            set(handles.Trajectory.UserData(11),'XData',[V3G(1),V4G(1)],'YData',[V3G(2),V4G(2)]);
-            set(handles.Trajectory.UserData(12),'XData',[V5G(1),V4G(1)],'YData',[V5G(2),V4G(2)]);
-            set(handles.Trajectory.UserData(13),'XData',[V5G(1),V6G(1)],'YData',[V5G(2),V6G(2)]);
-            set(handles.Trajectory.UserData(14),'XData',[V7G(1),V6G(1)],'YData',[V7G(2),V6G(2)]);
-            set(handles.Trajectory.UserData(15),'XData',[V7G(1),V8G(1)],'YData',[V7G(2),V8G(2)]);
-            set(handles.Trajectory.UserData(16),'XData',[V1G(1),V8G(1)],'YData',[V1G(2),V8G(2)]);
+            color = 'blue';
+            linewidth = 0.5;
+            linestyle = '-';
+            
+            plot([V1G(1),V2G(1)],[V1G(2),V2G(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+            plot([V3G(1),V2G(1)],[V3G(2),V2G(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+            plot([V3G(1),V4G(1)],[V3G(2),V4G(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+            plot([V5G(1),V4G(1)],[V5G(2),V4G(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+            plot([V5G(1),V6G(1)],[V5G(2),V6G(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+            plot([V7G(1),V6G(1)],[V7G(2),V6G(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+            plot([V7G(1),V8G(1)],[V7G(2),V8G(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+            plot([V1G(1),V8G(1)],[V1G(2),V8G(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
+            
+%             set(handles.Trajectory.UserData(29),'XData',[V1G(1),V2G(1)],'YData',[V1G(2),V2G(2)]);
+%             set(handles.Trajectory.UserData(30),'XData',[V3G(1),V2G(1)],'YData',[V3G(2),V2G(2)]);
+%             set(handles.Trajectory.UserData(31),'XData',[V3G(1),V4G(1)],'YData',[V3G(2),V4G(2)]);
+%             set(handles.Trajectory.UserData(32),'XData',[V5G(1),V4G(1)],'YData',[V5G(2),V4G(2)]);
+%             set(handles.Trajectory.UserData(33),'XData',[V5G(1),V6G(1)],'YData',[V5G(2),V6G(2)]);
+%             set(handles.Trajectory.UserData(34),'XData',[V7G(1),V6G(1)],'YData',[V7G(2),V6G(2)]);
+%             set(handles.Trajectory.UserData(35),'XData',[V7G(1),V8G(1)],'YData',[V7G(2),V8G(2)]);
+%             set(handles.Trajectory.UserData(36),'XData',[V1G(1),V8G(1)],'YData',[V1G(2),V8G(2)]);
         
-        
-    %         set(handles.Trajectory,'UserData',line([V1G(1),V2G(1)],[V1G(2),V2G(2)]));
-    %         set(handles.Trajectory,'UserData',line([V3G(1),V2G(1)],[V3G(2),V2G(2)]));
-    %         set(handles.Trajectory,'UserData',line([V3G(1),V4G(1)],[V3G(2),V4G(2)]));
-    %         set(handles.Trajectory,'UserData',line([V5G(1),V4G(1)],[V5G(2),V4G(2)]));
-    %         set(handles.Trajectory,'UserData',line([V5G(1),V6G(1)],[V5G(2),V6G(2)]));
-    %         set(handles.Trajectory,'UserData',line([V7G(1),V6G(1)],[V7G(2),V6G(2)]));
-    %         set(handles.Trajectory,'UserData',line([V7G(1),V8G(1)],[V7G(2),V8G(2)]));
-    %         set(handles.Trajectory,'UserData',line([V1G(1),V8G(1)],[V1G(2),V8G(2)]));
         end
         drawnow
         pause(0.1);
@@ -280,49 +366,89 @@ end
 
 % --- Update topic message
 function [msgback, vector_indice] = getmsg(vector, vector_indice, handles, varargin)
-    if isempty(varargin)
-        if vector.indice > vector_indice
-            set(eval(['handles.St_',inputname(1)]),'Value',1);
-            msgback = vector.back();
-            vector_indice = vector.indice;
-        else
-            set(eval(['handles.St_',inputname(1)]),'Value',0);
-            msgback = repelem(NaN, vector.dim);
-        end
+if isempty(varargin)
+    if vector.indice > vector_indice
+        set(eval(['handles.St_',inputname(1)]),'Value',1);
+        msgback = vector.back();
+        vector_indice = vector.indice;
     else
-        msgback = repelem({NaN},varargin{1});
-        if vector{1}.indice > vector_indice
-            set(eval(['handles.St_',inputname(1)]),'Value',1);
-            for num = 1 : varargin{1}
-                msgback{num} = vector{num}.back();
-            end
-            vector_indice = vector{1}.indice;
-        else
-            set(eval(['handles.St_',inputname(1)]),'Value',0);
-        end
+        set(eval(['handles.St_',inputname(1)]),'Value',0);
+        msgback = repelem(NaN, vector.dim);
     end
+else
+    msgback = repelem({NaN},varargin{1});
+    if vector{1}.indice > vector_indice
+        set(eval(['handles.St_',inputname(1)]),'Value',1);
+        for num = 1 : varargin{1}
+            msgback{num} = vector{num}.back();
+        end
+        vector_indice = vector{1}.indice;
+    else
+        set(eval(['handles.St_',inputname(1)]),'Value',0);
+    end
+end
     
 % --- Display Notice
 function setlog(handles, str)
-    string = sprintf('%s\n',str);
-    global PubArrayText
-    PubArrayText = horzcat(string, PubArrayText);
-    set(handles.Notice,'String',PubArrayText);
+string = sprintf('%s\n',str);
+global PubArrayText
+PubArrayText = horzcat(string, PubArrayText);
+set(handles.Notice,'String',PubArrayText);
 
 % --- Calculate parking time
 function time = caltime(t1, t2)
-    timestr = datestr(t2 - t1, 'HH:MM:SS.FFF');
-    timevec = datevec(timestr);
-    time = (timevec(4)*60 + timevec(5))*60 + timevec(6);
-    
+timestr = datestr(t2 - t1, 'HH:MM:SS.FFF');
+timevec = datevec(timestr);
+time = (timevec(4)*60 + timevec(5))*60 + timevec(6);
+
+% --- Adjust the xlim/ylim order
 function [xmin, xmax] = inorder(xmin, xmax)
-    if xmin > xmax
-        t = xmax;
-        xmax = xmin;
-        xmin = t;
-    elseif xmin == xmax
-        xmax = xmin + 1;
-    end
+if xmin > xmax
+    t = xmax;
+    xmax = xmin;
+    xmin = t;
+elseif xmin == xmax
+    xmax = xmin + 1;
+end
+    
+% --- Calculate the target position
+function [p_fl, p_fr, p_rr, p_rl] = calpp(R1, R2, O1, O2, width)
+VecL = [R1(1)-O1(1), R1(2)-O1(2)];
+VecObs = [O2(1)-O1(1), O2(2)-O1(2)];
+VecRef = [R2(1)-R1(1), R2(2)-R1(2)];
+theta = atan2(VecL(2), VecL(1));
+Flag = [dot(VecL, VecObs) <= 0, dot(-VecL, VecRef) <= 0]; % 1-obtuse angle, 0-acute angle
+if isequal(Flag, [1, 1])
+    Rec_l = norm(VecL);
+    T = [cos(theta), -sin(theta), O1(1); sin(theta), cos(theta), O1(2); 0, 0, 1];
+    p_fl = [R1(1); R1(2); 1];
+    p_fr = T*[Rec_l; -width; 1];
+    p_rr = T*[0; -width; 1];
+    p_rl = [O1(1); O1(2); 1];
+elseif isequal(Flag, [1, 0])
+    Rec_l = norm(VecL) - dot(-VecL, VecRef)/norm(VecL);
+    T = [cos(theta), -sin(theta), O1(1); sin(theta), cos(theta), O1(2); 0, 0, 1];
+    p_fl = T*[Rec_l; 0; 1];
+    p_fr = T*[Rec_l; -width; 1];
+    p_rr = T*[0; -width; 1];
+    p_rl = [O1(1); O1(2); 1];
+elseif isequal(Flag, [0, 0])
+    Rec_l = norm(VecL) - (dot(VecL, VecObs) + dot(-VecL, VecRef))/norm(VecL);
+    Obsw = abs(det([VecL; VecObs]))/norm(VecL);
+    T = [cos(theta), -sin(theta), O2(1); sin(theta), cos(theta), O2(2); 0, 0, 1];
+    p_fl = T*[Rec_l; Obsw; 1];
+    p_fr = T*[Rec_l; Obsw-width; 1];
+    p_rr = T*[0; Obsw-width; 1];
+    p_rl = T*[0; Obsw; 1];
+else
+    Rec_l = norm(VecL) - dot(VecL, VecObs)/norm(VecL);
+    T = [cos(theta), -sin(theta), R1(1); sin(theta), cos(theta), R1(2); 0, 0, 1];
+    p_fl = [R1(1); R1(2); 1];
+    p_fr = T*[0; -width; 1];
+    p_rr = T*[-Rec_l; -width; 1];
+    p_rl = T*[-Rec_l; 0; 1];
+end
+
     
 
 % --- Executes on button press in push_paraset.
@@ -334,6 +460,7 @@ function push_paraset_Callback(hObject, eventdata, handles)
 % Xlim & Ylim for trajectory display    
 global tr_xlim
 global tr_ylim
+global pk_width
     
 if get(handles.push_paraset, 'value')
     set(handles.ui_paraset, 'Visible', 0);
@@ -347,6 +474,7 @@ ymax = str2num(get(handles.set_ymax,'String'));
 [ymin, ymax] = inorder(ymin, ymax);
 tr_xlim = [xmin, xmax];
 tr_ylim = [ymin, ymax];
+pk_width = str2num(get(handles.set_pkwidth,'String'));
 
 % --- Executes on button press in push_start.
 function push_start_Callback(hObject, eventdata, handles)
@@ -498,4 +626,27 @@ if get(handles.push_reset, 'value')
     set(handles.push_start,'String','开始泊车');
     set(handles.Time, 'String', '');
     set(handles.Notice,'String',PubArrayText);
+end
+
+
+
+function set_pkwidth_Callback(hObject, eventdata, handles)
+% hObject    handle to set_pkwidth (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of set_pkwidth as text
+%        str2double(get(hObject,'String')) returns contents of set_pkwidth as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function set_pkwidth_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to set_pkwidth (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
 end
