@@ -1,23 +1,23 @@
-%Ô­µØ×ªÏòÊ±³¤rot£º²´³µ¹ı³ÌÖĞ¼İÊ»Ô±Ô­µØ´ò·½ÏòÅÌµÄ×ÜÊ±³¤
+%åŸåœ°è½¬å‘æ—¶é•¿rotï¼šæ³Šè½¦è¿‡ç¨‹ä¸­é©¾é©¶å‘˜åŸåœ°æ‰“æ–¹å‘ç›˜çš„æ€»æ—¶é•¿
 function [score]=rot_Assessment(VehicleSpeed,angle)
 
-[rv,cv]=size(VehicleSpeed);
-[ra,ca]=size(angle); %½Ç¶È»¹ÊÇ»¡¶È£¿
-num_rot=0
+rv=size(VehicleSpeed);
+ra=size(angle); %è§’åº¦è¿˜æ˜¯å¼§åº¦ï¼Ÿ
+num_rot=0;
 
 if rv==ra
     r=rv;
 else
-    r=min(rv,ra); %È¡Ğ¡Öµ
-    fprintf("ËÙ¶ÈÓë·½ÏòÅÌ×ª½ÇÎ¬¶È²»Ò»ÖÂ");
+    r=min(rv,ra); %å–å°å€¼
+    fprintf("é€Ÿåº¦ä¸æ–¹å‘ç›˜è½¬è§’ç»´åº¦ä¸ä¸€è‡´\n");
 for i=1:r
     if VehicleSpeed(i,2)<0.05 && angle(i,2)>0.1
         num_rot=num_rot+1;
     end
 end
 
-%Ô­µØ×ªÏò·ÖÖµ
-if num_rot<=(0.1*r) % 10%ÒÔÄÚµÄÊ±¼äÔ­µØ×ªÏò
+%åŸåœ°è½¬å‘åˆ†å€¼
+if num_rot<=(0.1*r) % 10%ä»¥å†…çš„æ—¶é—´åŸåœ°è½¬å‘
     score=2;
 elseif (0.1*r)<num_rot && num_rot<=(0.2*r)
     score=1.2;
