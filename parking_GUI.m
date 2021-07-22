@@ -23,7 +23,7 @@ function varargout = parking_GUI(varargin)
 
 % Edit the above text to modify the response to help parking_GUI
 
-% Last Modified by GUIDE v2.5 31-May-2021 02:04:45
+% Last Modified by GUIDE v2.5 22-Jul-2021 21:52:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -47,7 +47,7 @@ end
 
 % --- Executes just before parking_GUI is made visible.
 function parking_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
-% This function has no output args, see OutputFcn.
+% This function has no outplineut args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -131,8 +131,7 @@ handles.output = hObject;
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes parking_GUI wait for user response (see UIRESUME)Theta=tan((RefPoseY-ObstaclePoseY)/(RefPoseX-ObstaclePoseX));
-PoseTheta=rad2deg(Theta);
+% UIWAIT makes parking_GUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
 end
@@ -178,12 +177,20 @@ varargout{1} = handles.output;
     angle = myvector(2);
     sub_steering_angle = rossubscriber('/steering_angle_deg', 'apa_msgs/SteeringAngleStamped',{@SteeringAngleCallback, angle});
     angleDsp= findobj(0, 'tag', 'angle');
+    
     axes(handles.Trajectory);
     set(handles.Trajectory,'XLim',[0, 20],'YLim',[-5, 5]);
     set(handles.Trajectory,'UserData',[line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),...
         line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0]),line([0 0],[0 0])]);   
+    
+    if(VehicleSpeed.empty())
+        fprintf('no data input yet\n')
+        pause(0.1);
+    end
+    latest_speed_record = VehicleSpeed.back();
+    StartTime = latest_speed_record(1);
     
     %泊车过程（while（1）循环内）
     while(1)
@@ -208,7 +215,7 @@ varargout{1} = handles.output;
         end
         latest_angle_record = angle.back();       
         if(Ref1.empty()||Ref2.empty()||Ref3.empty()||Ref4.empty()||...
-            Obstacle1.empty()||Obstacle2.empty()||Obstacle3.empty()||Obstacle4.empty()||Refposetheta.empty())
+            Obstacle1.empty()||Obstacle2.empty()||Obstacle3.empty()||Obstacle4.empty()||posetheta.empty())
             fprintf('no parking slot data\n')
             pause(0.1);
             continue;
@@ -217,7 +224,7 @@ varargout{1} = handles.output;
         RefPose3 = Ref3.back(); RefPose4 = Ref4.back();
         ObstaclePose1 = Obstacle1.back(); ObstaclePose2 = Obstacle2.back(); 
         ObstaclePose3 = Obstacle3.back(); ObstaclePose4 = Obstacle4.back();
-        PoseTheta = posetheta.back();
+        PoseTheta = posetheta.back(); 
         if(VehicleSpeed.empty()||LocalA.empty()||localx.empty||localy.empty()||yaw.empty())
             fprintf('no vehicle data\n')
             pause(0.1);
@@ -252,10 +259,10 @@ varargout{1} = handles.output;
         
         %记录当前车辆位置
           %求从车身坐标系到全局坐标系的刚体变换矩阵
-        T = [cos(Yaw(2)), -sin(Yaw(2)), LocalX(2); sin(Yaw(2)), cos(Yaw(2)), LocalY(2); 0, 0, 1];
+        T = [cos(Yaw(2)), -sin(Yaw(2)), LocalX(2); sin(Yaw(2)), cos(Yaw(2)), LocalY(2); 0, 0, 1]; 
           %求从全局坐标系到车位坐标系的刚体变换矩阵
         PoseTheta1=deg2rad(PoseTheta(2)); %转化为弧度
-        T0 = [cos(PoseTheta1),-sin(PoseTheta1),ObstaclePose1(2);sin(PoseTheta1),cos(PoseTheta1),ObstaclePose1(3);0,0,1];
+        T0 = [cos(PoseTheta1),-sin(PoseTheta1),-ObstaclePose1(2);sin(PoseTheta1),cos(PoseTheta1),-ObstaclePose1(3);0,0,1];
           %求车辆八角点在车身坐标系下的位置
         V1L = [3.026;0.3955;1];V2L=[3.026;-0.3955;1];V3L=[2.646;-0.7755;1]; V4L=[-0.384;-0.7755;1];
         V5L = [-0.544;-0.4105;1]; V6L = [-0.544;0.4105;1]; V7L = [-0.384;0.7755;1]; V8L = [2.646;0.7755;1];
@@ -266,6 +273,7 @@ varargout{1} = handles.output;
         V0 = [LocalX(2);LocalY(2);1];
         V = T0*V0; %V为车位坐标系下车辆质心位置，车位坐标系以障碍车外角点为原点
         R1 = T0*[RefPose1(2);RefPose1(3);1];  %R1为车位坐标系下参考车角点位置
+        O1=T0*[ObstaclePose1(2);ObstaclePose1(3);1]; 
         
         %fprintf('current log length of steering_angle: %d\nlatest steering_angle: %f deg\n', angle.size(), latest_angle_record(2));
         %fprintf('current log length of vehicle_speed: %d\nlatest vehicle_speed: %f deg\n', VehicleSpeed.size(), latest_speed_record(2));
@@ -283,24 +291,24 @@ varargout{1} = handles.output;
         
         %横向偏差
         global yError
-        %yError = LocalY(2) - (RefPose1(3) + RefPose2(3) + ObstaclePose1(3) + ObstaclePose2(3))/4;
         h = abs(V(2));
-        yError = abs(h-0.8);
+        yError = h-0.8;
+       % yError = LocalY(2) - (RefPose1(2) + RefPose2(2) + ObstaclePose1(2) + ObstaclePose2(2))/4;
         yErrorDsp= findobj(0, 'tag', 'yError');           
         set(yErrorDsp,'string',num2str(yError));    
         %纵向偏差
         global xError
-        %xError = LocalX(2) - (RefPose1(2) + RefPose2(2) + ObstaclePose1(2) + ObstaclePose2(2))/4;
-        x_= (abs(R1(1))-3.57)/2+0.544; %标准纵向位置
-        xError = abs(LocalX(2) - x_);
+        x_= (R1(1)-O1(1)-3.57)/2+0.544; %标准纵向位置
+        xError = V(1) - x_;
+        %xError = LocalX(2) - (ObstaclePose1(2) + RefPose1(2) + ObstaclePose2() + RefPose2(2))/4;
         xErrorDsp= findobj(0, 'tag', 'xError');           
         set(xErrorDsp,'string',num2str(xError));    
         %航向角偏差
         global HeadingAngleError
-        %HeadingAngleError = Yaw-RefPoseTheta;
-        HeadingAngleError = rad2deg(Yaw(2))-PoseTheta;
-        HeadingAngleErrorDsp = findobj(0, 'tag', 'HeadingAngleError');   
-        set(HeadingAngleErrorDsp,'string',num2str(HeadingAngleError));        
+        HeadingAngleError = rad2deg(Yaw(2))-PoseTheta(2);
+        %HeadingAngleError = Yaw-PoseTheta;       
+        %HeadingAngleError = findobj(0, 'tag', 'HeadingAngleError');   
+        set(handles.HeadingAngleError,'string',num2str(HeadingAngleError));        
         pause(0.01);
                 
         %draw parking slot 
@@ -362,15 +370,23 @@ varargout{1} = handles.output;
     
     %泊车结束
     %泊车时间评分
+    Time=Time-StartTime;
     Time_score = T_Assessment(Time);
+    fprintf('Time_score =%d\n', Time_score);
     %姿态精度评分
-    acc_score = acc_Assessment(xError,yError,HeadingAngleError);
+    angleError=deg2rad(HeadingAngleError);
+    acc_score = acc_Assessment(xError,yError,angleError);
+    fprintf('acc_score =%d\n', acc_score);
     %舒适度评分
-    LocalAx = LocalA(:,2);   %纵向加速度
-    LocalAy = LocalA(:,3);   %横向加速度
+    Acc = get_data(LocalA);
+    LocalAx = Acc(:,2);   %纵向加速度
+    LocalAy = Acc(:,3);   %横向加速度
     com_score = com_Assessment(LocalAx,LocalAy);
+    fprintf('com_score =%d\n', com_score);
     %原地转向时长评分
-    rot_score = rot_Assessment(VehicleSpeed,angle);
+    VehicleSpeed_data=get_data(VehicleSpeed);
+    angle_data=get_data(angle);    
+    rot_score = rot_Assessment(VehicleSpeed_data,angle_data);
     
     %计算泊车评分    
     global score
