@@ -1,42 +1,42 @@
-%ÊæÊÊĞÔcom£º²´³µ¹ı³ÌÖĞºáÏò¼ÓËÙ¶È´óÓÚ3.5m/s^2»ò×İÏò¼ÓËÙ¶È´óÓÚ3.5m/s^2µÄ×ÜÊ±³¤(ãĞÖµ¿É¸ù¾İÇé¿ö×Ô¼º¶¨Òå)
+%èˆ’é€‚æ€§comï¼šæ³Šè½¦è¿‡ç¨‹ä¸­æ¨ªå‘åŠ é€Ÿåº¦å¤§äº3.5m/s^2æˆ–çºµå‘åŠ é€Ÿåº¦å¤§äº3.5m/s^2çš„æ€»æ—¶é•¿(é˜ˆå€¼å¯æ ¹æ®æƒ…å†µè‡ªå·±å®šä¹‰)
 function [score]=com_Assessment(LocalAx,LocalAy)
 num_LocalAx=0;
 num_LocalAy=0;
 
-%×İÏò¼ÓËÙ¶ÈÊ±³¤¼ÆÊı
-[rx,cx]=size(LocalAx); %ÈÏÎªLocalAxÊÇÁ½ÁĞµÄ¾ØÕó£¬¼´c=2£¬µÚÒ»ÁĞÎªÊıÖµµÚ¶şÁĞÎª¼ÓËÙ¶È
+%çºµå‘åŠ é€Ÿåº¦æ—¶é•¿è®¡æ•°
+rx=size(LocalAx); %è®¤ä¸ºLocalAxæ˜¯ä¸¤åˆ—çš„çŸ©é˜µï¼Œå³c=2ï¼Œç¬¬ä¸€åˆ—ä¸ºæ•°å€¼ç¬¬äºŒåˆ—ä¸ºåŠ é€Ÿåº¦
 for i=1:rx
-    if LocalAx(i,2)>3.5
+    if LocalAx(i)>3.5
         num_LocalAx=num_LocalAx+1;
     end
 end
 
-%ºáÏò¼ÓËÙ¶ÈÊ±³¤¼ÆÊı
-[ry,cy]=size(LocalAy); %ÈÏÎªLocalAxÊÇÁ½ÁĞµÄ¾ØÕó£¬¼´c=2£¬µÚÒ»ÁĞÎªÊıÖµµÚ¶şÁĞÎª¼ÓËÙ¶È
+%æ¨ªå‘åŠ é€Ÿåº¦æ—¶é•¿è®¡æ•°
+ry=size(LocalAy); %è®¤ä¸ºLocalAxæ˜¯ä¸¤åˆ—çš„çŸ©é˜µï¼Œå³c=2ï¼Œç¬¬ä¸€åˆ—ä¸ºæ•°å€¼ç¬¬äºŒåˆ—ä¸ºåŠ é€Ÿåº¦
 for i=1:ry
-    if LocalAy(i,2)>3.5
+    if LocalAy(i)>3.5
         num_LocalAy=num_LocalAy+1;
     end
 end
 
-%×İÏò·ÖÖµ
-if num_LocalAx<=(0.05*rx) % 5%ÒÔÄÚµÄÊ±¼ä³¬¹ıãĞÖµ
-    score_LocalAx=2;
+%çºµå‘åˆ†å€¼
+if num_LocalAx<=(0.05*rx) % 5%ä»¥å†…çš„æ—¶é—´è¶…è¿‡é˜ˆå€¼
+    score_LocalAx=10;
 elseif ((0.05*rx)<num_LocalAx)&&(num_LocalAx<=(0.1*rx))
-    score_LocalAx=1.2;
+    score_LocalAx=6;
 elseif ((0.1*rx)<num_LocalAx)&&(num_LocalAx<=(0.2*rx))
-    score_LocalAx=0.4;
+    score_LocalAx=2;
 else
     score_LocalAx=0;
 end
 
-%ºáÏò·ÖÖµ
-if num_LocalAy<=(0.05*ry) % 5%ÒÔÄÚµÄÊ±¼ä³¬¹ıãĞÖµ
-    score_LocalAy=2;
+%æ¨ªå‘åˆ†å€¼
+if num_LocalAy<=(0.05*ry) % 5%ä»¥å†…çš„æ—¶é—´è¶…è¿‡é˜ˆå€¼
+    score_LocalAy=10;
 elseif ((0.05*ry)<num_LocalAy)&&(num_LocalAy<=(0.1*ry))
-    score_LocalAy=1.2;
+    score_LocalAy=6;
 elseif ((0.1*ry)<num_LocalAy)&&(num_LocalAy<=(0.2*ry))
-    score_LocalAy=0.4;
+    score_LocalAy=2;
 else
     score_LocalAy=0;
 end

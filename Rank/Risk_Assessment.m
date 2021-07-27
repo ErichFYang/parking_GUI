@@ -1,49 +1,49 @@
-%Åö×²·çÏÕRisk£º²´³µ¹ı³ÌÖĞ³µÁ¾ÓëÕÏ°­³µ¾àÀëĞ¡ÓÚ10cmµÄ×ÜÊ±³¤
+%ç¢°æ’é£é™©Riskï¼šæ³Šè½¦è¿‡ç¨‹ä¸­è½¦è¾†ä¸éšœç¢è½¦è·ç¦»å°äº10cmçš„æ€»æ—¶é•¿
 % Vehicle??
 
-%Õû³µ²ÎÊı£º
-vehicle_width = 1.551; %³µ¿í
-vehicle_length = 3.569; %³µ³¤
-rear_overhang = 0.544; %ºóĞü
-front_overhang = 0.72; %Ç°Ğü
-wheel_base = 2.305;%Öá¾à
-front_wheel_track = 1.324;%Ç°ÂÖ¾à
-rear_wheel_track = 1.292;%ºóÂÖ¾à
-front_vehicle_width = 0.791; %¶ÔÓ¦°Ë±ßĞÎf±ß
-rear_vehicle_width = 0.821; %¶ÔÓ¦°Ë±ßĞÎc±ß
+%æ•´è½¦å‚æ•°ï¼š
+%vehicle_width = 1.551; %è½¦å®½
+%vehicle_length = 3.569; %è½¦é•¿
+%rear_overhang = 0.544; %åæ‚¬
+%front_overhang = 0.72; %å‰æ‚¬
+%wheel_base = 2.305;%è½´è·
+%front_wheel_track = 1.324;%å‰è½®è·
+%rear_wheel_track = 1.292;%åè½®è·
+%front_vehicle_width = 0.791; %å¯¹åº”å…«è¾¹å½¢fè¾¹
+%rear_vehicle_width = 0.821; %å¯¹åº”å…«è¾¹å½¢cè¾¹
 
-Vehicle.Wf = front_vehicle_width;
-Vehicle.Wr = rear_vehicle_width;
-Vehicle.Lf = front_overhang + wheel_base;
-Vehicle.Lr = rear_overhang;
+%Vehicle.Wf = front_vehicle_width;
+%Vehicle.Wr = rear_vehicle_width;
+%Vehicle.Lf = front_overhang + wheel_base;
+%Vehicle.Lr = rear_overhang;
 
-Cord_ObsF1 = [0;0];
-Cord_ObsF2 = [0;-5];
-Cord_ObsR1 = [-5;0];
-Cord_ObsR2 = [-5;-5];
-Pos_Car = [-3;-2.5;pi/9];
+%Cord_ObsF1 = [0;0];
+%Cord_ObsF2 = [0;-5];
+%Cord_ObsR1 = [-5;0];
+%Cord_ObsR2 = [-5;-5];
+%Pos_Car = [-3;-2.5;pi/9];
 
-Is_High_Risk = RiskAssess(Cord_ObsF1,Cord_ObsF2,Cord_ObsR1,Cord_ObsR2,Pos_Car,Vehicle);
+%Is_High_Risk = RiskAssess(Cord_ObsF1,Cord_ObsF2,Cord_ObsR1,Cord_ObsR2,Pos_Car,Vehicle);
 
 function Is_High_Risk = RiskAssess(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle)
 % function Is_High_Risk = RiskAssess(Cord_ObsF1,Cord_ObsF2,Cord_ObsR1,Cord_ObsR2,Pos_Car,Vehicle)
 %**********************************************************************************************
-%ÅĞ¶Ï³µÁ¾ÊÇ·ñ´æÔÚÓëÇ°ºóÕÏ°­³µÅö×²µÄ·çÏÕ
-%ÓëÕÏ°­³µ¾àÀë<0.1mÊ±£¬Is_High_Risk = true
-%³¤¶Èµ¥Î»Í³Ò»Îªm ½Ç¶Èµ¥Î»Í³Ò»Îªrad
-%Cord_ObsF1£ºÇ°ÕÏ°­³µÍâ²à½Çµã×ø±ê[x;y]
-%Cord_ObsF2£ºÇ°ÕÏ°­³µÄÚ²à½Çµã×ø±ê[x;y]
-%Cord_ObsR1£ººóÕÏ°­³µÍâ²à½Çµã×ø±ê[x;y]
-%Cord_ObsR2£ººóÕÏ°­³µÄÚ²à½Çµã×ø±ê[x;y]
-%Pos_Car£º³µÁ¾Î»×Ë[x;y;theta];
+%åˆ¤æ–­è½¦è¾†æ˜¯å¦å­˜åœ¨ä¸å‰åéšœç¢è½¦ç¢°æ’çš„é£é™©
+%ä¸éšœç¢è½¦è·ç¦»<0.1mæ—¶ï¼ŒIs_High_Risk = true
+%é•¿åº¦å•ä½ç»Ÿä¸€ä¸ºm è§’åº¦å•ä½ç»Ÿä¸€ä¸ºrad
+%Cord_ObsF1ï¼šå‰éšœç¢è½¦å¤–ä¾§è§’ç‚¹åæ ‡[x;y]
+%Cord_ObsF2ï¼šå‰éšœç¢è½¦å†…ä¾§è§’ç‚¹åæ ‡[x;y]
+%Cord_ObsR1ï¼šåéšœç¢è½¦å¤–ä¾§è§’ç‚¹åæ ‡[x;y]
+%Cord_ObsR2ï¼šåéšœç¢è½¦å†…ä¾§è§’ç‚¹åæ ‡[x;y]
+%Pos_Carï¼šè½¦è¾†ä½å§¿[x;y;theta];
 % *********************************************************************************************
 Is_High_Risk = false;
 
-Vec_Obs_F = RefPose1 - RefPose2; %Ç°ÕÏ°­³µ½ÇµãÁ¬ÏßÏòÁ¿
-Vec_Obs_R = ObstaclePose2 - ObstaclePose1; %ºóÕÏ°­³µ½ÇµãÁ¬ÏßÏòÁ¿
+Vec_Obs_F = RefPose1 - RefPose2; %å‰éšœç¢è½¦è§’ç‚¹è¿çº¿å‘é‡
+Vec_Obs_R = ObstaclePose2 - ObstaclePose1; %åéšœç¢è½¦è§’ç‚¹è¿çº¿å‘é‡
 len_Vec_Obs_F = norm(Vec_Obs_F);
 len_Vec_Obs_R = norm(Vec_Obs_R);
-%³µÁ¾°Ë±ßĞÎµã1 2 5 6µÄ×ø±ê
+%è½¦è¾†å…«è¾¹å½¢ç‚¹1 2 5 6çš„åæ ‡
 Point1 = [Vehicle.Lf; Vehicle.Wf/2; 0];
 Point2 = [Vehicle.Lf; -Vehicle.Wf/2; 0];
 Point5 = [-Vehicle.Lr; -Vehicle.Wr/2; 0];
@@ -53,17 +53,17 @@ Point1 = dcm*Point1 + Pos_Car;
 Point2 = dcm*Point2 + Pos_Car; 
 Point5 = dcm*Point5 + Pos_Car;
 Point6 = dcm*Point6 + Pos_Car;
-%Çó³µÁ¾°Ë±ßĞÎµã1¡¢2µ½Ç°ÕÏ°­³µµÄ¾àÀë
+%æ±‚è½¦è¾†å…«è¾¹å½¢ç‚¹1ã€2åˆ°å‰éšœç¢è½¦çš„è·ç¦»
 dis1toObsF = cross([Vec_Obs_F;0],[Point1(1:2)-RefPose2;0]);
 dis2toObsF = cross([Vec_Obs_F;0],[Point2(1:2)-RefPose2;0]);
-%µÃµ½µã1¡¢2ÖĞ¾àÀëÇ°ÕÏ°­³µ×îÎ£ÏÕµÄÖµ
-%ÕâÀï²ÉÓÃ²æ³ËÇóµãµ½Ç°ÕÏ°­³µµÄ¾àÀë£¬>0ÔÚ¿âÎ»ÄÚ£¬<0·¢ÉúÅö×²,×¢ÒâÏòÁ¿·½ÏòµÄÑ¡È¡
+%å¾—åˆ°ç‚¹1ã€2ä¸­è·ç¦»å‰éšœç¢è½¦æœ€å±é™©çš„å€¼
+%è¿™é‡Œé‡‡ç”¨å‰ä¹˜æ±‚ç‚¹åˆ°å‰éšœç¢è½¦çš„è·ç¦»ï¼Œ>0åœ¨åº“ä½å†…ï¼Œ<0å‘ç”Ÿç¢°æ’,æ³¨æ„å‘é‡æ–¹å‘çš„é€‰å–
 distoF = min(dis1toObsF(3),dis2toObsF(3));
-%Çó³µÁ¾°Ë±ßĞÎµã5¡¢6µ½ºóÕÏ°­³µµÄ¾àÀë
+%æ±‚è½¦è¾†å…«è¾¹å½¢ç‚¹5ã€6åˆ°åéšœç¢è½¦çš„è·ç¦»
 dis5toObsR = cross([Vec_Obs_R;0],[Point5(1:2)-ObstaclePose1;0]);
 dis6toObsR = cross([Vec_Obs_R;0],[Point6(1:2)-ObstaclePose1;0]);
 distoR = min(dis5toObsR(3),dis6toObsR(3));
-%Çó³µÁ¾µ½ÕÏ°­³µµÄ×îĞ¡¾àÀë
+%æ±‚è½¦è¾†åˆ°éšœç¢è½¦çš„æœ€å°è·ç¦»
 distoobs = min(distoF/len_Vec_Obs_F,distoR/len_Vec_Obs_R);
 if distoobs < 0.1
     Is_High_Risk = true;

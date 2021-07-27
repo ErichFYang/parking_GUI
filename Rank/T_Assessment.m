@@ -1,11 +1,11 @@
-%²´³µÈëÎ»×ÜÊ±³¤T£º´Ó¿ªÊ¼²´³µµ½²´³µ½áÊøµÄ×ÜÊ±¼ä
+%æ³Šè½¦å…¥ä½æ€»æ—¶é•¿Tï¼šä»Žå¼€å§‹æ³Šè½¦åˆ°æ³Šè½¦ç»“æŸçš„æ€»æ—¶é—´
 function [score]=T_Assessment(Time)
 if Time<=61.9
-    score=2;
+    score=10;
 elseif Time>104.49
-    score=0.4;
+    score=2;
 else
-    score=1.2;
+    score=6;
 end
 
     

@@ -1,23 +1,27 @@
-%ÈëÎ»×ÜÊ±³¤T£¬×ËÌ¬¾«¶Èacc£¬Åö×²·çÏÕcrash£¬ÊæÊÊĞÔcom£¬Ô­µØ×ªÏòÊ±³¤rot
-%²´³µÈëÎ»×ÜÊ±³¤T£º´Ó¿ªÊ¼²´³µµ½²´³µ½áÊøµÄ×ÜÊ±¼ä
-%Í£³µ×ËÌ¬¾«¶Èacc£º²´³µ×îÖÕÎ»×ËÓëÄ¿±êÎ»×ËµÄºá0.3¡¢×İÏòÆ«²î0.3ºÍº½Ïò½ÇÆ«²î0.4µÄ¼ÓÈ¨Öµ
-%Åö×²·çÏÕrisk£º²´³µ¹ı³ÌÖĞ³µÁ¾ÓëÕÏ°­³µ¾àÀëĞ¡ÓÚ10cmµÄ×ÜÊ±³¤
-%ÊæÊÊĞÔcom£º²´³µ¹ı³ÌÖĞºáÏò¼ÓËÙ¶È´óÓÚ3.5m/s^2»ò×İÏò¼ÓËÙ¶È´óÓÚ3.5m/s^2µÄ×ÜÊ±³¤(ãĞÖµ¿É¸ù¾İÇé¿ö×Ô¼º¶¨Òå)
-%Ô­µØ×ªÏòÊ±³¤rot£º²´³µ¹ı³ÌÖĞ¼İÊ»Ô±Ô­µØ´ò·½ÏòÅÌµÄ×ÜÊ±³¤
+%å…¥ä½æ€»æ—¶é•¿Tï¼Œå§¿æ€ç²¾åº¦accï¼Œç¢°æ’é£é™©crashï¼Œèˆ’é€‚æ€§comï¼ŒåŸåœ°è½¬å‘æ—¶é•¿rot
+%æ³Šè½¦å…¥ä½æ€»æ—¶é•¿Tï¼šä»å¼€å§‹æ³Šè½¦åˆ°æ³Šè½¦ç»“æŸçš„æ€»æ—¶é—´
+%åœè½¦å§¿æ€ç²¾åº¦accï¼šæ³Šè½¦æœ€ç»ˆä½å§¿ä¸ç›®æ ‡ä½å§¿çš„æ¨ª0.3ã€çºµå‘åå·®0.3å’Œèˆªå‘è§’åå·®0.4çš„åŠ æƒå€¼
+%ç¢°æ’é£é™©riskï¼šæ³Šè½¦è¿‡ç¨‹ä¸­è½¦è¾†ä¸éšœç¢è½¦è·ç¦»å°äº10cmçš„æ€»æ—¶é•¿
+%èˆ’é€‚æ€§comï¼šæ³Šè½¦è¿‡ç¨‹ä¸­æ¨ªå‘åŠ é€Ÿåº¦å¤§äº3.5m/s^2æˆ–çºµå‘åŠ é€Ÿåº¦å¤§äº3.5m/s^2çš„æ€»æ—¶é•¿(é˜ˆå€¼å¯æ ¹æ®æƒ…å†µè‡ªå·±å®šä¹‰)
+%åŸåœ°è½¬å‘æ—¶é•¿rotï¼šæ³Šè½¦è¿‡ç¨‹ä¸­é©¾é©¶å‘˜åŸåœ°æ‰“æ–¹å‘ç›˜çš„æ€»æ—¶é•¿
 % function [score]=eva(Time,xError,yError,HeadingAngelError,RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle,LocalAx,LocalAy,VehicleSpeed,angle)
 
-Time_score=T_Assessment(Time);
-acc_score=acc_Assessment(xError,yError,HeadingAngelError);
-risk_score=RiskAssess(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle);
-com_score=com_Assessment(LocalAx,LocalAy);
-rot_score=rot_Assessment(VehicleSpeed,angle);
+%Time_score=T_Assessment(Time);
+%acc_score=acc_Assessment(xError,yError,HeadingAngelError);
+%risk_score=RiskAssess(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle);
+%com_score=com_Assessment(LocalAx,LocalAy);
+%rot_score=rot_Assessment(VehicleSpeed,angle);
 
 function [score]=eva0(Time_score,acc_score,risk_score,com_score,rot_score)
-A0=[1, 3, 4, 7,	9;1/3, 1, 2, 5, 7;1/4, 1/2, 1, 4, 6;1/7, 1/5, 1/4, 1, 3;1/9, 1/7, 1/6, 1/3, 1];
+A0=[1, 3, 4, 7,	9;...
+        1/3, 1, 2, 5, 7;...
+        1/4, 1/2, 1, 4, 6;...
+        1/7, 1/5, 1/4, 1, 3;...
+        1/9, 1/7, 1/6, 1/3, 1];
 [v,d]=eigs(A0);
 lamdamax=max(d(:));
 [m,n]=size(v); 
-%½«ÌØÕ÷ÏòÁ¿±ê×¼»¯  
+%å°†ç‰¹å¾å‘é‡æ ‡å‡†åŒ–  
 sum = 0;  
 for i=1:m  
     sum = sum + v(i,1);  

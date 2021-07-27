@@ -23,7 +23,7 @@ function varargout = parking_GUI(varargin)
 
 % Edit the above text to modify the response to help parking_GUI
 
-% Last Modified by GUIDE v2.5 21-Jul-2021 20:42:42
+% Last Modified by GUIDE v2.5 23-Jul-2021 01:14:32
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -52,7 +52,8 @@ function parking_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to parking_GUI (see VARARGIN)
-addpath('/home/gxb/ProjectTeam/Ranking/Code/parking_GUI/Callbacks');
+addpath('Callbacks');
+addpath('Rank');
 global PubArrayText % show interaction message
 global flag_show    % related to trajectory showing
 global h_tr         % handles of trajectory
@@ -97,11 +98,32 @@ global localx;
 global localy;
 global yaw;
 global last_Ref;
+global xError
+global yError
+global HeadingAngleError
+global risk_score
 
+risk_score = 0;
 stop = 1;   
 exit = 0;  
 flag_loop2 = 0;
 last_Ref = zeros(12,2);
+
+%整车参数
+      vehicle_width = 1.551; %车宽
+      vehicle_length = 3.569; %车长
+      rear_overhang = 0.544; %后悬
+      front_overhang = 0.72; %前悬
+      wheel_base = 2.305;%轴距
+      front_wheel_track = 1.324;%前轮距
+      rear_wheel_track = 1.292;%后轮距
+      front_vehicle_width = 0.791; %对应八边形f边
+      rear_vehicle_width = 0.821; %对应八边形c边
+      
+       Vehicle.Wf = front_vehicle_width;
+        Vehicle.Wr = rear_vehicle_width;
+        Vehicle.Lf = front_overhang + wheel_base;
+        Vehicle.Lr = rear_overhang;
 
 % main
 while(~exit)
@@ -129,9 +151,9 @@ while(~exit)
     Obstacle2 = myvector(3);
     Obstacle3 = myvector(3);
     Obstacle4 = myvector(3);
-    Refposetheta = myvector(2);
+    posetheta = myvector(2);
     Ref_indice = 0;
-    parking_slot = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped',{@parkingslotCallback,Ref1,Ref2,Ref3,Ref4,Obstacle1,Obstacle2,Obstacle3,Obstacle4,Refposetheta});
+    parking_slot = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped',{@parkingslotCallback,Ref1,Ref2,Ref3,Ref4,Obstacle1,Obstacle2,Obstacle3,Obstacle4,posetheta});
     
     localx = myvector(2);
     localy = myvector(2);
@@ -163,7 +185,7 @@ while(~exit)
 %     end
     set(handles.Time, 'String', '');
     end
-    
+          
     %泊车过程
     while ~(stop||exit)
         if ~flag_loop2
@@ -174,13 +196,14 @@ while(~exit)
         [latest_angle_record, angle_indice] = getmsg(angle, angle_indice, handles);
         [latest_speed_record, VehicleSpeed_indice] = getmsg(VehicleSpeed, VehicleSpeed_indice, handles);
         [latest_A_record, LocalA_indice] = getmsg(LocalA, LocalA_indice, handles);        
-        Ref = {Ref1, Ref2, Ref3, Ref4, Obstacle1, Obstacle2, Obstacle3, Obstacle4, Refposetheta};
+        Ref = {Ref1, Ref2, Ref3, Ref4, Obstacle1, Obstacle2, Obstacle3, Obstacle4, posetheta};
         [Ref_msg, Ref_indice] = getmsg(Ref, Ref_indice, handles, 9);
         [RefPose1, RefPose2, RefPose3, RefPose4, ...
-            ObstaclePose1, ObstaclePose2, ObstaclePose3, ObstaclePose4, RefPoseTheta] = Ref_msg{:};
+            ObstaclePose1, ObstaclePose2, ObstaclePose3, ObstaclePose4, PoseTheta] = Ref_msg{:};
         local = {localx, localy, yaw};
         [local_msg, local_indice] = getmsg(local, local_indice, handles, 3);
         [LocalX, LocalY, Yaw] = local_msg{:};
+        
         
         %方向盘转角
         set(handles.angle,'string',num2str(latest_angle_record(2),'%.2f'));
@@ -192,7 +215,7 @@ while(~exit)
         set(handles.Localax,'string',num2str(latest_A_record(2),'%.2f'));
                
         if ~isnan(RefPose1)
-            hold off
+            hold off        
             % Target parking position
             VecObs = [ObstaclePose2(2) - ObstaclePose1(2), ObstaclePose2(3) - ObstaclePose1(3)];
             Theta_Obs = atan2(VecObs(2), VecObs(1));
@@ -212,6 +235,7 @@ while(~exit)
             Ref_fl = RefPose3(2:3);
             [p_fl, p_fr, p_rr, p_rl, p_length] = calpp(Ref_rl, Ref_rr, Obs_fl, Obs_fr, p_width);
             set(handles.P_length,'string',num2str(p_length,'%.2f'));
+            
             
             %绘制算法目标车位
             axes(handles.Trajectory);           
@@ -314,7 +338,7 @@ while(~exit)
             %求车辆八角点在全局坐标系下的位置
             V1G = T*V1L; V2G = T*V2L; V3G = T*V3L; V4G = T*V4L;
             V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
-            VCG = T*VCL;
+            VCG = T*VCL;           
             
             %绘制车辆模型，以长方形框表示实时位置
             color = 'blue';
@@ -334,12 +358,46 @@ while(~exit)
             
             %             set(handles.Trajectory.UserData(29),'XData',[V1G(1),V2G(1)],'YData',[V1G(2),V2G(2)]);
             %             set(handles.Trajectory.UserData(30),'XData',[V3G(1),V2G(1)],'YData',[V3G(2),V2G(2)]);
-            %             set(handles.Trajectory.UserData(31),'XData',[V3G(1),V4G(1)],'YData',[V3G(2),V4G(2)]);
+            %             set(handles.Traject标注重合ory.UserData(31),'XData',[V3G(1),V4G(1)],'YData',[V3G(2),V4G(2)]);
             %             set(handles.Trajectory.UserData(32),'XData',[V5G(1),V4G(1)],'YData',[V5G(2),V4G(2)]);
             %             set(handles.Trajectory.UserData(33),'XData',[V5G(1),V6G(1)],'YData',[V5G(2),V6G(2)]);
             %             set(handles.Trajectory.UserData(34),'XData',[V7G(1),V6G(1)],'YData',[V7G(2),V6G(2)]);
             %             set(handles.Trajectory.UserData(35),'XData',[V7G(1),V8G(1)],'YData',[V7G(2),V8G(2)]);
             %             set(handles.Trajectory.UserData(36),'XData',[V1G(1),V8G(1)],'YData',[V1G(2),V8G(2)]);
+        end
+        
+        if ~isnan(LocalX)
+            if ~isnan(RefPose1)
+            %求从全局坐标系到车位坐标系的刚体变换矩阵
+            PoseTheta1=deg2rad(PoseTheta(2)); %转化为弧度
+            T0 = [cos(PoseTheta1),-sin(PoseTheta1),-ObstaclePose1(2);sin(PoseTheta1),cos(PoseTheta1),-ObstaclePose1(3);0,0,1];
+            %求车辆质心在目标车位坐标系下的位置
+            V0 = [LocalX(2);LocalY(2);1];
+            V = T0*V0; %V为车位坐标系下车辆质心位置，车位坐标系以障碍车外角点为原点
+            R1 = T0*[RefPose1(2);RefPose1(3);1];  %R1为车位坐标系下参考车角点位置
+            O1=T0*[ObstaclePose1(2);ObstaclePose1(3);1]; 
+            
+            %横向偏差
+            h = abs(V(2));
+            yError = h-0.8;
+            yErrorDsp= findobj(0, 'tag', 'yError');           
+            set(yErrorDsp,'string',[num2str(yError,'%.2f'),'    m']);
+            
+            %纵向偏差
+            x_= (R1(1)-O1(1)-3.57)/2+0.544; %标准纵向位置
+            xError = V(1) - x_;      
+            xErrorDsp= findobj(0, 'tag', 'xError');           
+            set(xErrorDsp,'string',[num2str(xError,'%.2f'),'    m']);
+            
+            %航向角偏差
+            HeadingAngleError = rad2deg(Yaw(2))-PoseTheta(2);
+            set(handles.HeadingAngleError,'string',[num2str(HeadingAngleError,'%.2f'),'  deg']);        
+            
+            Pos_Car=[LocalX(2);LocalY(2);Yaw(2)];
+            rfp1=[RefPose1(2);RefPose1(3)]; rfp2=[RefPose2(2); RefPose2(3)];
+            obp1=[ObstaclePose1(2);ObstaclePose1(3)]; obp2=[ObstaclePose2(2);ObstaclePose2(3)];
+            risk_score = risk_score+ Risk_Assessment(rfp1,rfp2,obp1,obp2,Pos_Car,Vehicle);
+            end
         end
         pause(0.1);
     end
@@ -358,33 +416,59 @@ while(~exit)
             Obs_fl; Obs_fr(1:2)'; Obs_rr(1:2)'; Obs_rl; ...
             V1G(1:2)';V2G(1:2)';V3G(1:2)';V4G(1:2)'; ...
             V5G(1:2)';V6G(1:2)';V7G(1:2)';V8G(1:2)'];
-        %泊车结束
+        
+    %泊车结束
+        %泊车时间评分
+        Time_score = T_Assessment(parkingtime);
+        fprintf('Time_score =%d\n', Time_score);
+        
+        %姿态精度评分
+        angleError=deg2rad(HeadingAngleError);
+        acc_score = acc_Assessment(xError,yError,angleError);
+        fprintf('acc_score =%d\n', acc_score);
+        
+        %舒适度评分
+        Acc = get_data(LocalA);
+        LocalAx = Acc(:,2);   %纵向加速度
+        LocalAy = Acc(:,3);   %横向加速度
+        com_score = com_Assessment(LocalAx,LocalAy);
+        fprintf('com_score =%d\n', com_score);
+        
+        %原地转向时长评分
+        VehicleSpeed_data=get_data(VehicleSpeed);
+        angle_data=get_data(angle);    
+        rot_score = rot_Assessment(VehicleSpeed_data,angle_data);
+        fprintf('rot_score =%d\n', rot_score);
+    
+        %计算泊车评分         
+        risk=Risk(risk_score);
+        fprintf('risk_score =%d\n', risk);
+        score = eva(Time_score,acc_score,risk,com_score,rot_score);
+    
          %碰撞距离
-        %CollisonDistance=  ;           ????????
-    %     CollisonDistanceDsp= findobj(0, 'tag', 'CollisonDistance');   
-    %     set(CollisonDistanceDsp,'string',num2str(CollisonDistance));
-
-    %     %纵向偏差
-    %     xError = VCG(1) - (ObstaclePose1(1,1) + RefPose1(1,1) + ObstaclePose2(1,1) + RefPose2(1,1))/4;   
-    %     set(handles.xError,'string',num2str(xError)); 
-    % 
-    %     %横向偏差
-    %     yError = VCG(2) - (RefPose1(3) + RefPose2(3) + ObstaclePose1(3) + ObstaclePose2(3))/4;       
-    %     set(handles.yError,'string',num2str(yError));
-    %         
-    %     %航向角偏差
-    %     HeadingAngelError = Yaw-RefPoseTheta;
-    %     set(handles.HeadingAngelError,'string',num2str(HeadingAngelError));
-    % 
-    %     %计算泊车评分
-    %     acc_score = acc_Assessment(xError,yError,HeadingAngelError);
 
         %显示泊车时间与评分
-        set(handles.Time,'string',[num2str(parkingtime), ' s']);
+        set(handles.Time,'string',[num2str(parkingtime,'%.2f'), ' s']);
         set(handles.push_show,'Visible',1);
-    %     scoreDsp= findobj(0, 'tag', 'score');
-    %     set(scoreDsp,'string',num2str(score));
-    
+        scoreDsp= findobj(0, 'tag', 'score');
+        set(scoreDsp,'string',num2str(score,'%.2f'));
+        
+        %%
+        %x=[Time_score, acc_score, com_score, rot_score, risk, 10-score];
+        axes(handles.judge); set(gca,'fontsize',15)
+        subplot(3,2,1);
+        pie([Time_score, acc_score, com_score, rot_score, risk],{'time score','acc score','com score','rot score', 'risk score'});
+        title('Total score components');
+        subplot(3,2,2);
+        pie([Time_score, 10-Time_score]); title('Time score');
+        subplot(3,2,3);
+        pie([acc_score, 10- acc_score]); title('Acc score');
+        subplot(3,2,4);
+        pie([com_score, 10-com_score]); title('Com score');
+        subplot(3,2,5);
+        pie([rot_score, 10- rot_score]); title('Rot score');
+        subplot(3,2,6);
+        pie([risk, 10-risk]); title('Risk score');
     end
 end    
 
@@ -831,17 +915,21 @@ if get(handles.push_reset, 'value')
     set(handles.Notice,'String',PubArrayText);
     
     cla(handles.Trajectory);
+    cla(handles.judge);
     
     set(handles.P_length,'string','');
     set(handles.angle,'string','');
     set(handles.VehicleSpeed,'string','');
     set(handles.Localay,'string','');
     set(handles.Localax,'string','');
+    set(handles.xError,'string','');
+    set(handles.yError,'string','');
+    set(handles.HeadingAngleError,'string','');
+    set(handles.score,'string','');
     
     set(handles.St_angle,'Value',0);
     set(handles.St_VehicleSpeed,'Value',0);
     set(handles.St_LocalA,'Value',0);
-    set(handles.St_CollisionDistance,'Value',0);
     set(handles.St_Ref,'Value',0);
     set(handles.St_local,'Value',0);
 
