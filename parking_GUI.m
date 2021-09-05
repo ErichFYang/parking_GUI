@@ -23,7 +23,7 @@ function varargout = parking_GUI(varargin)
 
 % Edit the above text to modify the response to help parking_GUI
 
-% Last Modified by GUIDE v2.5 05-Sep-2021 14:23:48
+% Last Modified by GUIDE v2.5 05-Sep-2021 21:27:42
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -94,9 +94,7 @@ global tr_xlim;  % xlim of handles.Trajectory
 global tr_ylim;  % ylim of handles.Trajectory
 global flag_loop2;  % to show if the program run in loop2
 global p_width; % width of target position
-global localx;
-global localy;
-global yaw;
+global vehiclePose;
 global last_Ref;
 global xError;
 global yError;
@@ -146,25 +144,16 @@ while(~exit)
         LocalA_indice = 0;
         imu = rossubscriber('/imu/data', 'sensor_msgs/Imu',{@imuCallback,LocalA});
 
-        Ref1 = myvector(3);
-        Ref2 = myvector(3);
-        Ref3 = myvector(3);
-        Ref4 = myvector(3);
-        Obstacle1 = myvector(3);
-        Obstacle2 = myvector(3);
-        Obstacle3 = myvector(3);
-        Obstacle4 = myvector(3);
-        refposetheta = myvector(2);
-        Ref_indice = 0;
-        parking_slot = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped',{@parkingslotCallback,Ref1,Ref2,Ref3,Ref4,Obstacle1,Obstacle2,Obstacle3,Obstacle4,refposetheta});
+%       {time,Ref1,Ref2,Ref3,Ref4,Obstacle1,Obstacle2,Obstacle3,Obstacle4,refposetheta}
+        parkingSlot = myvector(18);
+        parkingSlot_indice = 0;
+        parking_slot = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped',{@parkingslotCallback,parkingSlot});
+        
+%       {time,localx,localy,yaw}
+        vehiclePose = myvector(4);
+        vehiclePose_indice = 0;
+        Vehicle_pose2D = rossubscriber('/odometer/local_map/base_link', 'nav_msgs/Odometry',{@Vehicle_pose2DCallback,vehiclePose});
 
-        localx = myvector(2);
-        localy = myvector(2);
-        yaw = myvector(2);
-        local_indice = 0;
-        Vehicle_pose2D = rossubscriber('/odometer/local_map/base_link', 'nav_msgs/Odometry',{@Vehicle_pose2DCallback,localx,localy,yaw});
-
-        %Timer
         setlog(handles, '话题订阅成功！');
 
         %Display modules initialization
@@ -180,20 +169,20 @@ while(~exit)
             time_start = now;
             flag_loop2 = 1;
         end
-        tic
         % Get and display message
         [latest_angle_record, angle_indice] = getmsg(angle, angle_indice, handles);
         [latest_speed_record, VehicleSpeed_indice] = getmsg(VehicleSpeed, VehicleSpeed_indice, handles);
-        [latest_A_record, LocalA_indice] = getmsg(LocalA, LocalA_indice, handles);        
-        Ref = {Ref1, Ref2, Ref3, Ref4, Obstacle1, Obstacle2, Obstacle3, Obstacle4, refposetheta};
-        [Ref_msg, Ref_indice] = getmsg(Ref, Ref_indice, handles, 9);
-        [RefPose1, RefPose2, RefPose3, RefPose4, ...
-            ObstaclePose1, ObstaclePose2, ObstaclePose3, ObstaclePose4, RefPoseTheta] = Ref_msg{:};
-        local = {localx, localy, yaw};
-        [local_msg, local_indice] = getmsg(local, local_indice, handles, 3);
-        [LocalX, LocalY, Yaw] = local_msg{:};
-        toc
-        tic
+        [latest_A_record, LocalA_indice] = getmsg(LocalA, LocalA_indice, handles);  
+        [latest_parkingSlot_record, parkingSlot_indice] = getmsg(parkingSlot, parkingSlot_indice, handles);
+        RefPose1 = latest_parkingSlot_record(2:3); RefPose2 = latest_parkingSlot_record(4:5);
+        RefPose3 = latest_parkingSlot_record(6:7); RefPose4 = latest_parkingSlot_record(8:9);
+        ObstaclePose1 = latest_parkingSlot_record(10:11); ObstaclePose2 = latest_parkingSlot_record(12:13);
+        ObstaclePose3 = latest_parkingSlot_record(14:15); ObstaclePose4 = latest_parkingSlot_record(16:17);
+        RefPoseTheta = latest_parkingSlot_record(18);
+        [latest_vehiclePose_record, vehiclePose_indice] = getmsg(vehiclePose, vehiclePose_indice, handles);
+        LocalX = latest_vehiclePose_record(2); LocalY = latest_vehiclePose_record(3);
+        Yaw = latest_vehiclePose_record(4);
+        
         %方向盘转角
         set(handles.angle,'string',num2str(latest_angle_record(2),'%.2f'));
         %车速
@@ -206,22 +195,22 @@ while(~exit)
         if ~isnan(RefPose1)
             hold off        
             % Target parking position
-            VecObs = [ObstaclePose2(2) - ObstaclePose1(2), ObstaclePose2(3) - ObstaclePose1(3)];
+            VecObs = [ObstaclePose2(1) - ObstaclePose1(1), ObstaclePose2(2) - ObstaclePose1(2)];
             Theta_Obs = atan2(VecObs(2), VecObs(1));
-            T_Obs = [cos(Theta_Obs), -sin(Theta_Obs), ObstaclePose1(2); ...
-                sin(Theta_Obs), cos(Theta_Obs), ObstaclePose1(3); 0, 0, 1];
+            T_Obs = [cos(Theta_Obs), -sin(Theta_Obs), ObstaclePose1(1); ...
+                sin(Theta_Obs), cos(Theta_Obs), ObstaclePose1(2); 0, 0, 1];
             Obs_fr = T_Obs * [p_width; 0; 1];
             Obs_rr = T_Obs * [p_width; -p_width; 1];
-            Obs_fl = ObstaclePose1(2:3);
-            Obs_rl = ObstaclePose3(2:3);
-            VecRef = [RefPose2(2) - RefPose1(2), RefPose2(3) - RefPose1(3)];
+            Obs_fl = ObstaclePose1;
+            Obs_rl = ObstaclePose3;
+            VecRef = [RefPose2(1) - RefPose1(1), RefPose2(2) - RefPose1(2)];
             Theta_Ref = atan2(VecRef(2), VecRef(1));
-            T_Ref = [cos(Theta_Ref), -sin(Theta_Ref), RefPose1(2); ...
-                sin(Theta_Ref), cos(Theta_Ref), RefPose1(3); 0, 0, 1];
+            T_Ref = [cos(Theta_Ref), -sin(Theta_Ref), RefPose1(1); ...
+                sin(Theta_Ref), cos(Theta_Ref), RefPose1(2); 0, 0, 1];
             Ref_rr = T_Ref * [p_width; 0; 1];
             Ref_fr = T_Ref * [p_width; p_width; 1];
-            Ref_rl = RefPose1(2:3);
-            Ref_fl = RefPose3(2:3);
+            Ref_rl = RefPose1;
+            Ref_fl = RefPose3;
             [p_fl, p_fr, p_rr, p_rl, p_length] = calpp(Ref_rl, Ref_rr, Obs_fl, Obs_fr, p_width);
             set(handles.P_length,'string',num2str(p_length,'%.2f'));
             PoseTheta = atan2(p_fl(2) - p_rl(2), p_fl(1) - p_rl(1));
@@ -320,7 +309,7 @@ while(~exit)
         if ~isnan(LocalX)
             %% 记录当前车辆位置
             %求从车身坐标系到全局坐标系的刚体变换矩阵
-            T = [cos(Yaw(2)), -sin(Yaw(2)), LocalX(2); sin(Yaw(2)), cos(Yaw(2)), LocalY(2); 0, 0, 1];
+            T = [cos(Yaw), -sin(Yaw), LocalX; sin(Yaw), cos(Yaw), LocalY; 0, 0, 1];
             %求车辆八角点在车身坐标系下的位置
             V1L = [3.026;0.3955;1];V2L=[3.026;-0.3955;1];V3L=[2.646;-0.7755;1]; V4L=[-0.384;-0.7755;1];
             V5L = [-0.544;-0.4105;1]; V6L = [-0.544;0.4105;1]; V7L = [-0.384;0.7755;1]; V8L = [2.646;0.7755;1];
@@ -364,7 +353,7 @@ while(~exit)
             % Rotate
             Tr = [cos(PoseTheta) sin(PoseTheta) 0; -sin(PoseTheta) cos(PoseTheta) 0; 0 0 1];
             %求车辆质心在目标车位坐标系下的位置
-            V0 = [LocalX(2);LocalY(2);1];
+            V0 = [LocalX;LocalY;1];
             V = Tt * Tr * V0; %V为车位坐标系下车辆质心位置，车位坐标系以障碍车外角点为原点
             
             %横向偏差
@@ -378,17 +367,16 @@ while(~exit)
             set(handles.xError,'string',num2str(xError,'%.2f'));
             
             %航向角偏差
-            HeadingAngleError = rad2deg(Yaw(2)-PoseTheta);  % positive -- counterclockwise
+            HeadingAngleError = rad2deg(Yaw-PoseTheta);  % positive -- counterclockwise
             set(handles.HeadingAngleError,'string',num2str(HeadingAngleError,'%.2f'));        
             
-            Pos_Car=[LocalX(2);LocalY(2);Yaw(2)];
-            rfp1=[RefPose1(2);RefPose1(3)]; rfp2=[RefPose2(2); RefPose2(3)];
-            obp1=[ObstaclePose1(2);ObstaclePose1(3)]; obp2=[ObstaclePose2(2);ObstaclePose2(3)];
+            Pos_Car=[LocalX;LocalY;Yaw];
+            rfp1=[RefPose1(1);RefPose1(2)]; rfp2=[RefPose2(1); RefPose2(2)];
+            obp1=[ObstaclePose1(1);ObstaclePose1(2)]; obp2=[ObstaclePose2(1);ObstaclePose2(2)];
             risk_score = risk_score + Risk_Assessment(rfp1,rfp2,obp1,obp2,Pos_Car,Vehicle);
             end
         end
         pause(0.06);
-        toc
     end
     
     if flag_loop2 && ~exit
@@ -467,8 +455,25 @@ while(~exit)
             setlog(handles, '车辆未完全泊入库位中，本次泊车成绩为0分。');
         end        
         set(handles.Time,'string',[num2str(parkingtime,'%.2f'), ' s']);
-        set(handles.push_show,'Visible',1);
         set(handles.score,'string',num2str(sum(score(:,2)),'%.2f'));
+        
+        % saving data
+        if get(handles.St_save,'Value')
+            saveFileName = [get(handles.set_name,'String') '_' datestr(now,'yymmddHHMM')];
+            if ~exist('DataSave', 'dir')
+                mkdir('DataSave');
+            end
+            saveFileName = ['DataSave/' saveFileName '.xls'];
+            setlog(handles, '正在保存数据...');
+            writematrix(angle.get_data(), saveFileName, 'Sheet', '!steering_angle_deg');
+            writematrix(VehicleSpeed.get_data(), saveFileName, 'Sheet', '!velometer!base_link_local');
+            writematrix(LocalA.get_data(), saveFileName, 'Sheet', '!imu!data');
+            writematrix(parkingSlot.get_data(), saveFileName, 'Sheet', '!parking_slot_info');
+            writematrix(vehiclePose.get_data(), saveFileName, 'Sheet', '!odometer!local_map!base_link');
+            setlog(handles, '保存完毕，请继续。');
+        end
+        % show the button
+        set(handles.push_show,'Visible',1);
     end
 end    
 
@@ -602,19 +607,16 @@ if n(2) > size(h,2)
 end 
 
 % --- show trajectory
-function showtrajectory(handles, localx, localy, yaw)
+function showtrajectory(handles, vehiclePose)
 global h_tr
-global displaymethod
 
-if ~displaymethod
+if ~get(handles.St_show, 'Value')
     %% use handles
     
     if h_tr ~= 0
         set(h_tr, 'Visible', 1);
     else
-        datax = localx.get_data();
-        datay = localy.get_data();
-        datayaw = yaw.get_data();
+        data = vehiclePose.get_data();
         NumberofTr = [1, 1];
         [h_tr, n_tr] = initgobj(NumberofTr(1),NumberofTr(2));
         axes(handles.Trajectory)
@@ -624,9 +626,9 @@ if ~displaymethod
         color = 'blue';
         linewidth = 0.5;
         linestyle = '-';
-        for n = 1 : size(datax, 1)
-            T = [cos(datayaw(n,2)), -sin(datayaw(n,2)), datax(n,2);...
-                sin(datayaw(n,2)), cos(datayaw(n,2)), datay(n,2); 0, 0, 1];
+        for n = 1 : size(data, 1)
+            T = [cos(data(n,4)), -sin(data(n,4)), data(n,2);...
+                sin(data(n,4)), cos(data(n,4)), data(n,3); 0, 0, 1];
             %求车辆八角点在全局坐标系下的位置
             V1G = T*V1L; V2G = T*V2L; V3G = T*V3L; V4G = T*V4L;
             V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
@@ -646,9 +648,7 @@ if ~displaymethod
     
 else
     %% abort handles
-    datax = localx.get_data();
-    datay = localy.get_data();
-    datayaw = yaw.get_data();
+    data = vehiclePose.get_data();
     axes(handles.Trajectory)
     %求车辆八角点在车身坐标系下的位置
     V1L = [3.026;0.3955;1];V2L=[3.026;-0.3955;1];V3L=[2.646;-0.7755;1]; V4L=[-0.384;-0.7755;1];
@@ -656,9 +656,9 @@ else
     color = 'blue';
     linewidth = 0.5;
     linestyle = '-';
-    for n = 1 : size(datax, 1)
-        T = [cos(datayaw(n,2)), -sin(datayaw(n,2)), datax(n,2);...
-            sin(datayaw(n,2)), cos(datayaw(n,2)), datay(n,2); 0, 0, 1];
+    for n = 1 : size(data, 1)
+        T = [cos(data(n,4)), -sin(data(n,4)), data(n,2);...
+            sin(data(n,4)), cos(data(n,4)), data(n,3); 0, 0, 1];
         %求车辆八角点在全局坐标系下的位置
         V1G = T*V1L; V2G = T*V2L; V3G = T*V3L; V4G = T*V4L;
         V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
@@ -963,8 +963,8 @@ if get(handles.push_reset, 'value')
     set(handles.St_angle,'Value',0);
     set(handles.St_VehicleSpeed,'Value',0);
     set(handles.St_LocalA,'Value',0);
-    set(handles.St_Ref,'Value',0);
-    set(handles.St_local,'Value',0);
+    set(handles.St_parkingSlot,'Value',0);
+    set(handles.St_vehiclePose,'Value',0);
 
 end
 
@@ -997,9 +997,7 @@ function push_show_Callback(hObject, eventdata, handles)
 % hObject    handle to push_show (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global localx
-global localy
-global yaw
+global vehiclePose
 global flag_show
 global h_tr
 global last_Ref
@@ -1008,7 +1006,7 @@ if get(handles.push_show, 'value')
     flag_show = ~flag_show;
     if flag_show
         setlog(handles, '正在显示......');
-        showtrajectory(handles, localx, localy, yaw);
+        showtrajectory(handles, vehiclePose);
         set(handles.push_show,'String','隐藏轨迹');
     else
         setlog(handles,'隐藏轨迹。');
@@ -1042,8 +1040,51 @@ end
 close(gcf)
 
 
-% --- Executes on button press in push_save.
-function push_save_Callback(hObject, eventdata, handles)
-% hObject    handle to push_save (see GCBO)
+% --- Executes on button press in St_save.
+function St_save_Callback(hObject, eventdata, handles)
+% hObject    handle to St_save (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of St_save
+
+
+% --- Executes on button press in St_parkingSlot.
+function St_parkingSlot_Callback(hObject, eventdata, handles)
+% hObject    handle to St_parkingSlot (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of St_parkingSlot
+
+
+% --- Executes on button press in St_vehiclePose.
+function St_vehiclePose_Callback(hObject, eventdata, handles)
+% hObject    handle to St_vehiclePose (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of St_vehiclePose
+
+
+
+function set_name_Callback(hObject, eventdata, handles)
+% hObject    handle to set_name (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of set_name as text
+%        str2double(get(hObject,'String')) returns contents of set_name as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function set_name_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to set_name (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
