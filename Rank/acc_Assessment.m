@@ -2,12 +2,28 @@
 % 0-5 5-10 10-15 
 % 0-1 1-2 2-3 3+
 function [score]=acc_Assessment(xError,yError,HeadingAngleError)
+% step
+x0 = 0;  % unit: m
+x1 = 0.05;
+x2 = 0.1;
+x3 = 0.15;
+
+y0 = 0;  % unit: m
+y1 = 0.05;
+y2 = 0.1;
+y3 = 0.15;
+
+d0 = 0;
+d1 = pi/18;
+d2 = pi/9;
+d3 = pi/6;
+
 %纵向偏差
-if (0<=xError)&&(xError<=5)
+if (x0<=xError)&&(xError<=x1)
     score_xError=10;
-elseif (5<=xError)&&(xError<=10)
+elseif (x1<=xError)&&(xError<=x2)
     score_xError=6;
-elseif (10<=xError)&&(xError<=15)
+elseif (x2<=xError)&&(xError<=x3)
     score_xError=2;
 elseif xError<0
     fprintf("xError<0\n")
@@ -17,11 +33,11 @@ else
 end
 
 %横向偏差
-if (0<=yError)&&(yError<=5)
+if (y0<=yError)&&(yError<=y1)
     score_yError=10;
-elseif (5<=yError)&&(yError<=10)
+elseif (y1<=yError)&&(yError<=y2)
     score_yError=6;
-elseif (10<=yError)&&(yError<=15)
+elseif (y2<=yError)&&(yError<=y3)
     score_yError=2;
 elseif yError<0
     fprintf("yError<0\n")
@@ -31,11 +47,11 @@ else
 end
 
 %航向角偏差
-if (0<=HeadingAngleError)&&(HeadingAngleError<=1)
+if (d0<=HeadingAngleError)&&(HeadingAngleError<=d1)
     score_HeadingAngleError=10;
-elseif (1<=HeadingAngleError)&&(HeadingAngleError<=2)
+elseif (d1<=HeadingAngleError)&&(HeadingAngleError<=d2)
     score_HeadingAngleError=6;
-elseif (2<=HeadingAngleError)&&(HeadingAngleError<=3)
+elseif (d2<=HeadingAngleError)&&(HeadingAngleError<=d3)
     score_HeadingAngleError=2;
 elseif HeadingAngleError<0
     fprintf("HeadingAngelError<0\n")

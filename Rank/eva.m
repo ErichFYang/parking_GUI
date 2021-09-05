@@ -12,7 +12,7 @@
 %com_score=com_Assessment(LocalAx,LocalAy);
 %rot_score=rot_Assessment(VehicleSpeed,angle);
 
-function [score]=eva0(Time_score,acc_score,risk_score,com_score,rot_score)
+function [score_return]=eva(Time_score,acc_score,risk_score,com_score,rot_score)
 A0=[1, 3, 4, 7,	9;...
         1/3, 1, 2, 5, 7;...
         1/4, 1/2, 1, 4, 6;...
@@ -33,7 +33,13 @@ end
 
 CI=(lamdamax-5)/4;
 
-score=Time_score*w0(1,1)+acc_score*w0(2,1)+risk_score*w0(3,1)+com_score*w0(4,1)+rot_score*w0(5,1);
+score = w0 .* [Time_score; acc_score; risk_score; com_score; rot_score];
+percent = score ./ 10;  % percentage in total
+ppercent = percent ./ w0;  % percentage in their own element
+
+score_return = [w0, score, percent, ppercent];
+
+% score=Time_score*w0(1,1)+acc_score*w0(2,1)+risk_score*w0(3,1)+com_score*w0(4,1)+rot_score*w0(5,1);
 
 end
 

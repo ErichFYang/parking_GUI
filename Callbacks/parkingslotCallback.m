@@ -39,4 +39,5 @@ buffer6.push_back([message.Header.Stamp.seconds, ObstaclePose2(1), ObstaclePose2
 buffer7.push_back([message.Header.Stamp.seconds, ObstaclePose3(1), ObstaclePose3(2)]);
 buffer8.push_back([message.Header.Stamp.seconds, ObstaclePose4(1), ObstaclePose4(2)]);
 buffer9.push_back([message.Header.Stamp.seconds, RefPoseTheta]);
+
 end
