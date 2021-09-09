@@ -23,7 +23,7 @@ function varargout = parking_GUI(varargin)
 
 % Edit the above text to modify the response to help parking_GUI
 
-% Last Modified by GUIDE v2.5 05-Sep-2021 21:27:42
+% Last Modified by GUIDE v2.5 09-Sep-2021 17:36:44
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -371,15 +371,15 @@ while(~exit)
             set(handles.HeadingAngleError,'string',num2str(HeadingAngleError,'%.2f'));        
             
             Pos_Car=[LocalX;LocalY;Yaw];
-            rfp1=[RefPose1(1);RefPose1(2)]; rfp2=[RefPose2(1); RefPose2(2)];
-            obp1=[ObstaclePose1(1);ObstaclePose1(2)]; obp2=[ObstaclePose2(1);ObstaclePose2(2)];
-            risk_score = risk_score + Risk_Assessment(rfp1,rfp2,obp1,obp2,Pos_Car,Vehicle);
+%             rfp1=[RefPose1(1);RefPose1(2)]; rfp2=[RefPose2(1); RefPose2(2)];
+%             obp1=[ObstaclePose1(1);ObstaclePose1(2)]; obp2=[ObstaclePose2(1);ObstaclePose2(2)];
+            risk_score = risk_score + Risk_Assessment(RefPose1',RefPose2',ObstaclePose1',ObstaclePose2',Pos_Car,Vehicle);
             end
         end
         pause(0.06);
     end
     
-    if flag_loop2 && ~exit
+    if flag_loop2 && ~exit && ~empty(angle)
         time_stop = now;   % record stop time
         % clear all the subscribers
         sub_steering_angle = 0;
@@ -418,19 +418,19 @@ while(~exit)
 
             %舒适度评分
             Acc = get_data(LocalA);
-            LocalAx = Acc(:,2);   %纵向加速度
-            LocalAy = Acc(:,3);   %横向加速度
-            com_score = com_Assessment(LocalAx,LocalAy);
+%             LocalAx = ;   %纵向加速度
+%             LocalAy = ;   %横向加速度
+            com_score = com_Assessment(Acc(:,2),Acc(:,3));
             fprintf('com_score =%d\n', com_score);
 
             %原地转向时长评分
-            VehicleSpeed_data = get_data(VehicleSpeed);
-            angle_data = get_data(angle);    
-            rot_score = rot_Assessment(VehicleSpeed_data,angle_data);
+%             VehicleSpeed_data = ;
+%             angle_data = ;
+            rot_score = rot_Assessment(get_data(VehicleSpeed),get_data(angle));
             fprintf('rot_score =%d\n', rot_score);
 
             %计算泊车评分         
-            risk=Risk(risk_score);
+            risk=Risk(risk_score, size(parkingSlot));
             fprintf('risk_score =%d\n', risk);
             % score = [weight of every element; score of every element; percent of every element]
             score = eva(Time_score,acc_score,risk,com_score,rot_score);
@@ -477,6 +477,98 @@ while(~exit)
     end
 end    
 
+% --- Start parking
+function StartStop(handles)
+global stop;
+if ~get(handles.ui_paraset,'Visible')
+    stop = ~stop;
+    if ~stop
+        set(handles.push_start,'String','结束泊车');
+        setlog(handles, '泊车开始。');
+        setlog(handles, datestr(now));
+        set(handles.push_show,'Visible',0);
+    else
+        set(handles.push_start,'String','开始泊车');
+        setlog(handles, '泊车结束。');
+        setlog(handles, datestr(now));
+    end
+end
+
+% --- Set GUI
+function SetGUI(handles)
+global tr_xlim
+global tr_ylim
+global p_width
+global displaymethod
+
+if get(handles.ui_paraset,'Visible')
+    set(handles.ui_paraset, 'Visible', 0);
+    set(handles.uipanel1, 'Visible', 1);
+    xmin = str2num(get(handles.set_xmin,'String'));
+    xmax = str2num(get(handles.set_xmax,'String'));
+    ymin = str2num(get(handles.set_ymin,'String'));
+    ymax = str2num(get(handles.set_ymax,'String'));
+    [xmin, xmax] = inorder(xmin, xmax);
+    [ymin, ymax] = inorder(ymin, ymax);
+    tr_xlim = [xmin, xmax];
+    tr_ylim = [ymin, ymax];
+    p_width = str2num(get(handles.set_pkwidth,'String'));
+    displaymethod = get(handles.St_show, 'Value');
+end
+
+% --- Reset GUI
+function ResetGUI(handles)
+global stop;
+global flag_loop2;
+global PubArrayText;
+global h_tr;
+global flag_show;
+global last_Ref;
+
+if ~get(handles.ui_paraset,'Visible')
+    stop = 1;
+    flag_loop2 = 0;
+    h_tr = 0;
+    flag_show = 0;
+    PubArrayText = sprintf('%s\n','');
+    last_Ref = zeros(12,2);
+
+    set(handles.ui_paraset, 'Visible', 1);
+    set(handles.uipanel1, 'Visible', 0);
+    set(handles.push_show,'Visible',0);
+
+    set(handles.push_start,'String','开始泊车');
+    set(handles.push_show,'String','显示轨迹');
+    set(handles.Time, 'String', '');
+    set(handles.Notice,'String',PubArrayText);
+
+    clear_graph(handles);
+
+    set(handles.P_length,'string','');
+    set(handles.angle,'string','');
+    set(handles.VehicleSpeed,'string','');
+    set(handles.Localay,'string','');
+    set(handles.Localax,'string','');
+    set(handles.xError,'string','');
+    set(handles.yError,'string','');
+    set(handles.HeadingAngleError,'string','');
+    set(handles.score,'string','');
+
+    set(handles.St_angle,'Value',0);
+    set(handles.St_VehicleSpeed,'Value',0);
+    set(handles.St_LocalA,'Value',0);
+    set(handles.St_parkingSlot,'Value',0);
+    set(handles.St_vehiclePose,'Value',0);
+end
+% --- Exit GUI
+function ExitGUI(handles)
+global exit
+
+rosshutdown;
+setlog(handles, '正在退出......');
+exit = 1;
+
+close(gcf);
 
 % --- Update topic message
 function [msgback, vector_indice] = getmsg(vector, vector_indice, handles, varargin)
@@ -762,25 +854,11 @@ function push_paraset_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Xlim & Ylim for trajectory display    
-global tr_xlim
-global tr_ylim
-global p_width
-global displaymethod
     
 if get(handles.push_paraset, 'value')
-    set(handles.ui_paraset, 'Visible', 0);
-    set(handles.uipanel1, 'Visible', 1);
+    SetGUI(handles);
 end
-xmin = str2num(get(handles.set_xmin,'String'));
-xmax = str2num(get(handles.set_xmax,'String'));
-ymin = str2num(get(handles.set_ymin,'String'));
-ymax = str2num(get(handles.set_ymax,'String'));
-[xmin, xmax] = inorder(xmin, xmax);
-[ymin, ymax] = inorder(ymin, ymax);
-tr_xlim = [xmin, xmax];
-tr_ylim = [ymin, ymax];
-p_width = str2num(get(handles.set_pkwidth,'String'));
-displaymethod = get(handles.St_show, 'Value');
+
 
 
 % --- Executes on button press in push_start.
@@ -788,20 +866,9 @@ function push_start_Callback(hObject, eventdata, handles)
 % hObject    handle to push_start (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global stop
 
 if get(handles.push_start, 'value')
-    stop = ~stop;
-    if ~stop
-        set(handles.push_start,'String','结束泊车');
-        setlog(handles, '泊车开始。');
-        setlog(handles, datestr(now));
-        set(handles.push_show,'Visible',0);
-    else
-        set(handles.push_start,'String','开始泊车');
-        setlog(handles, '泊车结束。');
-        setlog(handles, datestr(now));
-    end
+    StartStop(handles);
 end
 
 % --- Executes on button press in push_exit.
@@ -809,14 +876,11 @@ function push_exit_Callback(hObject, eventdata, handles)
 % hObject    handle to push_exit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global exit
 
 if get(handles.push_exit, 'value')
-    rosshutdown;
-    setlog(handles, '正在退出......');
-    exit = 1;
+    ExitGUI(handles);
 end
-close(gcf)
+
 
 
 % --- Executes when user attempts to close figure1.
@@ -924,48 +988,9 @@ function push_reset_Callback(hObject, eventdata, handles)
 % hObject    handle to push_reset (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global stop;
-global flag_loop2;
-global PubArrayText;
-global h_tr;
-global flag_show;
-global last_Ref;
 
 if get(handles.push_reset, 'value')
-    stop = 1;
-    flag_loop2 = 0;
-    h_tr = 0;
-    flag_show = 0;
-    PubArrayText = sprintf('%s\n','');
-    last_Ref = zeros(12,2);
-    
-    set(handles.ui_paraset, 'Visible', 1);
-    set(handles.uipanel1, 'Visible', 0);
-    set(handles.push_show,'Visible',0);
-    
-    set(handles.push_start,'String','开始泊车');
-    set(handles.push_show,'String','显示轨迹');
-    set(handles.Time, 'String', '');
-    set(handles.Notice,'String',PubArrayText);
-    
-    clear_graph(handles);
-    
-    set(handles.P_length,'string','');
-    set(handles.angle,'string','');
-    set(handles.VehicleSpeed,'string','');
-    set(handles.Localay,'string','');
-    set(handles.Localax,'string','');
-    set(handles.xError,'string','');
-    set(handles.yError,'string','');
-    set(handles.HeadingAngleError,'string','');
-    set(handles.score,'string','');
-    
-    set(handles.St_angle,'Value',0);
-    set(handles.St_VehicleSpeed,'Value',0);
-    set(handles.St_LocalA,'Value',0);
-    set(handles.St_parkingSlot,'Value',0);
-    set(handles.St_vehiclePose,'Value',0);
-
+    ResetGUI(handles);
 end
 
 
@@ -1087,4 +1112,26 @@ function set_name_CreateFcn(hObject, eventdata, handles)
 %       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on key press with focus on figure1 or any of its controls.
+function figure1_WindowKeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+
+switch double(get(gcf,'CurrentCharacter'))
+    case 13   % enter
+        StartStop(handles)
+    case 27   % esc
+        ExitGUI(handles)
+    case 114  % 'r'
+        ResetGUI(handles)
+    case 115  % 's'
+        SetGUI(handles)
+    otherwise
 end

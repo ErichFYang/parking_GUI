@@ -25,7 +25,7 @@
 
 %Is_High_Risk = RiskAssess(Cord_ObsF1,Cord_ObsF2,Cord_ObsR1,Cord_ObsR2,Pos_Car,Vehicle);
 
-function Is_High_Risk = RiskAssess(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle)
+function Is_High_Risk = Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle)
 % function Is_High_Risk = RiskAssess(Cord_ObsF1,Cord_ObsF2,Cord_ObsR1,Cord_ObsR2,Pos_Car,Vehicle)
 %**********************************************************************************************
 %判断车辆是否存在与前后障碍车碰撞的风险
@@ -66,6 +66,6 @@ distoR = min(dis5toObsR(3),dis6toObsR(3));
 %求车辆到障碍车的最小距离
 distoobs = min(distoF/len_Vec_Obs_F,distoR/len_Vec_Obs_R);
 if distoobs < 0.1
-    Is_High_Risk = true;
+    Is_High_Risk = 1;
 end
 end
