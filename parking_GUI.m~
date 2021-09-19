@@ -226,7 +226,7 @@ while(~exit)
 %             color = 'red';
 %             linewidth = 0.5;
 %             linestyle = '-';
-            PlotPolygon(handles, 3, p_fl, p_fr, p_rr, p_rl);
+%             PlotPolygon(handles, 3, p_fl, p_fr, p_rr, p_rl);
                         
 %             plot([p_fl(1), p_fr(1)],[p_fl(2), p_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
 %             hold on
@@ -238,7 +238,7 @@ while(~exit)
 %             color = 'green';
 %             linewidth = 0.5;
 %             linestyle = '-';
-            PlotPolygon(handles, 4, Ref_rl, Ref_rr, Obs_fr, Obs_fl);
+%             PlotPolygon(handles, 4, Ref_rl, Ref_rr, Obs_fr, Obs_fl);
             
 %             plot([Ref_rl(1), Ref_rr(1)],[Ref_rl(2), Ref_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
 %             plot([Ref_rr(1), Obs_fr(1)],[Ref_rr(2), Obs_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
@@ -249,8 +249,8 @@ while(~exit)
 %             color = 'black';
 %             linewidth = 0.5;
 %             linestyle = '-';  
-            PlotPolygon(handles, 5, Obs_fl, Obs_rl, Obs_rr, Obs_fr);
-            PlotPolygon(handles, 6, Ref_rl, Ref_fl, Ref_fr, Ref_rr);
+%             PlotPolygon(handles, 5, Obs_fl, Obs_rl, Obs_rr, Obs_fr);
+%             PlotPolygon(handles, 6, Ref_rl, Ref_fl, Ref_fr, Ref_rr);
             
 %             plot([Obs_fl(1),Obs_rl(1)],[Obs_fl(2),Obs_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
 %             plot([Obs_rl(1),Obs_rr(1)],[Obs_rl(2),Obs_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
@@ -270,10 +270,10 @@ while(~exit)
 %             fill([Ref_fl(1), Ref_fr(1), Ref_rr(1), Ref_rl(1)],[Ref_fl(2), Ref_fr(2), Ref_rr(2), Ref_rl(2)],... 
 %                 color,'FaceAlpha',facealpha);
 %             set(handles.Trajectory,'XLim',tr_xlim,'YLim',tr_ylim);
-            set(handles.Trajectory.UserData(1), 'XData', [Obs_fl(1), Obs_fr(1), Obs_rr(1), Obs_rl(1)], ...
-                'YData', [Obs_fl(2), Obs_fr(2), Obs_rr(2), Obs_rl(2)]);
-            set(handles.Trajectory.UserData(2), 'XData', [Ref_fl(1), Ref_fr(1), Ref_rr(1), Ref_rl(1)], ...
-                'YData', [Ref_fl(2), Ref_fr(2), Ref_rr(2), Ref_rl(2)]);
+%             set(handles.Trajectory.UserData(1), 'XData', [Obs_fl(1), Obs_fr(1), Obs_rr(1), Obs_rl(1)], ...
+%                 'YData', [Obs_fl(2), Obs_fr(2), Obs_rr(2), Obs_rl(2)]);
+%             set(handles.Trajectory.UserData(2), 'XData', [Ref_fl(1), Ref_fr(1), Ref_rr(1), Ref_rl(1)], ...
+%                 'YData', [Ref_fl(2), Ref_fr(2), Ref_rr(2), Ref_rl(2)]);
             
 %             set(handles.Trajectory.UserData(15),'XData',[Obs_fl(1)+(Obs_fr(1)-Obs_fl(1))*3/4,Obs_rr(1)+(Obs_fr(1)-Obs_rr(1))*3/4],... 
 %                 'YData',[Obs_fl(2)+(Obs_fr(2)-Obs_fl(2))*3/4,Obs_rr(2)+(Obs_fr(2)-Obs_rr(2))*3/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
@@ -1245,7 +1245,6 @@ function St_Robot_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of St_Robot
 if get(handles.St_Robot, 'Value') == 1
     set(handles.set_name, 'String', '机器');
-end
 
 % --- Executes on button press in St_Debug.
 function St_Debug_Callback(hObject, eventdata, handles)
