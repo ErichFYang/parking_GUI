@@ -23,7 +23,7 @@ function varargout = parking_GUI(varargin)
 
 % Edit the above text to modify the response to help parking_GUI
 
-% Last Modified by GUIDE v2.5 19-Sep-2021 14:17:39
+% Last Modified by GUIDE v2.5 21-Sep-2021 14:45:46
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -56,8 +56,10 @@ addpath('Callbacks');
 addpath('Rank');
 global PubArrayText % show interaction message
 global flag_show    % related to trajectory showing
+global flag_pk      % related to the ui.pk visibility
 global h_tr         % handles of trajectory
 flag_show = 0;
+flag_pk = 0;
 h_tr = 0;
 
 rosshutdown;
@@ -73,7 +75,9 @@ handles.output = hObject;
 guidata(hObject, handles);
 
 set(handles.ui_paraset, 'Visible', 1);
-set(handles.ui_show, 'Visible', 0);
+set([handles.ui_show, handles.ui_tr, handles.ui_msg, handles.ui_score], 'Visible', 0);
+
+
 
 % UIWAIT makes parking_GUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -102,7 +106,7 @@ global HeadingAngleError;
 global risk_score;
 
 % initialize score graph
-set(handles.sc1, 'XTick', {}, 'YTick', {});
+% set(handles.sc1, 'XTick', {}, 'YTick', {});
 
 risk_score = 0;
 stop = 1;   
@@ -167,9 +171,11 @@ while(~exit)
     while ~(stop||exit)
         tic
         if ~flag_loop2
-            time_start = now;
+            timer = tic;
+%             time_start = now;
+            set(handles.timer, 'Value', 1);
             flag_loop2 = 1;
-            count = 0;
+            myCount = 0;
         end
         % Get and display message
         [latest_angle_record, angle_indice, ~] = getmsg(angle, angle_indice, handles);
@@ -187,17 +193,19 @@ while(~exit)
         ObstaclePose3 = latest_parkingSlot_record(14:15); ObstaclePose4 = latest_parkingSlot_record(16:17);
         RefPoseTheta = latest_parkingSlot_record(18);
         
+        parkingtime = toc(timer);
+        set(handles.timer, 'String', num2str(parkingtime, '%.2f'))
+        
         
         %方向盘转角
         set(handles.angle,'string',num2str(latest_angle_record(2),'%.2f'));
         %车速
-        set(handles.VehicleSpeed,'string',num2str(latest_speed_record(2),'%.2f'));
+        set(handles.VehicleSpeed,'string',num2str(latest_speed_record(2)*3.6,'%.2f'));
         %横向加速度
-        set(handles.Localay,'string',num2str(latest_A_record(3),'%.2f'));
+        set(handles.Localay,'string',num2str(latest_A_record(3)/9.8,'%.2f'));
         %纵向加速度
-        set(handles.Localax,'string',num2str(latest_A_record(2),'%.2f'));
+        set(handles.Localax,'string',num2str(latest_A_record(2)/9.8,'%.2f'));
         
-
         if ~isnan(RefPose1(1)) && updateParkingSlot
 %             hold off        
             % Target parking position
@@ -221,12 +229,16 @@ while(~exit)
             set(handles.P_length,'string',num2str(p_length,'%.2f'));
             PoseTheta = atan2(p_fl(2) - p_rl(2), p_fl(1) - p_rl(1));
             
-            
+            if myCount >= 0
             %绘制算法目标车位  3       
 %             color = 'red';
 %             linewidth = 0.5;
 %             linestyle = '-';
-            PlotPolygon(handles, 3, p_fl, p_fr, p_rr, p_rl);
+%             PlotPolygon(handles, 3, p_fl, p_fr, p_rr, p_rl);
+            set(handles.Trajectory.UserData(3), 'XData', [p_fl(1) p_fr(1) NaN ...
+                p_fr(1) p_rr(1) NaN p_rr(1) p_rl(1) NaN p_rl(1) p_fl(1)], ...
+                'Ydata', [p_fl(2) p_fr(2) NaN p_fr(2) p_rr(2) NaN p_rr(2) p_rl(2) NaN ...
+                p_rl(2) p_fl(2)]);
                         
 %             plot([p_fl(1), p_fr(1)],[p_fl(2), p_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
 %             hold on
@@ -238,8 +250,11 @@ while(~exit)
 %             color = 'green';
 %             linewidth = 0.5;
 %             linestyle = '-';
-            PlotPolygon(handles, 4, Ref_rl, Ref_rr, Obs_fr, Obs_fl);
-            
+%             PlotPolygon(handles, 4, Ref_rl, Ref_rr, Obs_fr, Obs_fl);
+            set(handles.Trajectory.UserData(4), 'XData', [Ref_rl(1) Ref_rr(1) NaN ...
+                Ref_rr(1) Obs_fr(1) NaN Obs_fr(1) Obs_fl(1) NaN Obs_fl(1) Ref_rl(1)], ...
+                'Ydata', [Ref_rl(2) Ref_rr(2) NaN Ref_rr(2) Obs_fr(2) NaN Obs_fr(2) Obs_fl(2) NaN ...
+                Obs_fl(2) Ref_rl(2)]);
 %             plot([Ref_rl(1), Ref_rr(1)],[Ref_rl(2), Ref_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
 %             plot([Ref_rr(1), Obs_fr(1)],[Ref_rr(2), Obs_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
 %             plot([Obs_fr(1), Obs_fl(1)],[Obs_fr(2), Obs_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
@@ -249,8 +264,8 @@ while(~exit)
 %             color = 'black';
 %             linewidth = 0.5;
 %             linestyle = '-';  
-            PlotPolygon(handles, 5, Obs_fl, Obs_rl, Obs_rr, Obs_fr);
-            PlotPolygon(handles, 6, Ref_rl, Ref_fl, Ref_fr, Ref_rr);
+%             PlotPolygon(handles, 5, Obs_fl, Obs_rl, Obs_rr, Obs_fr);
+%             PlotPolygon(handles, 6, Ref_rl, Ref_fl, Ref_fr, Ref_rr);
             
 %             plot([Obs_fl(1),Obs_rl(1)],[Obs_fl(2),Obs_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
 %             plot([Obs_rl(1),Obs_rr(1)],[Obs_rl(2),Obs_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
@@ -302,6 +317,8 @@ while(~exit)
 %                 'YData',[Ref_fr(2)+(Ref_fl(2)-Ref_fr(2))*2/4,Ref_fr(2)+(Ref_rr(2)-Ref_fr(2))*2/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
 %             set(handles.Trajectory.UserData(28),'XData',[Ref_fr(1)+(Ref_fl(1)-Ref_fr(1))*1/4,Ref_fr(1)+(Ref_rr(1)-Ref_fr(1))*1/4],... 
 %                 'YData',[Ref_fr(2)+(Ref_fl(2)-Ref_fr(2))*1/4,Ref_fr(2)+(Ref_rr(2)-Ref_fr(2))*1/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
+            myCount = ~myCount;
+            end
         end
 
         if ~isnan(LocalX) && updateVehiclePose
@@ -320,7 +337,16 @@ while(~exit)
 %             color = 'blue';
 %             linewidth = 0.5;
 %             linestyle = '-';
-            PlotPolygon(handles, 7, V1G, V2G, V3G, V4G, V5G, V6G, V7G, V8G);
+%             PlotPolygon(handles, 7, V1G, V2G, V3G, V4G, V5G, V6G, V7G, V8G);
+            set(handles.Trajectory.UserData(7), 'XData', [V1G(1) V2G(1) NaN ...
+                V2G(1) V3G(1) NaN V3G(1) V4G(1) NaN ...
+                V4G(1) V5G(1) NaN V5G(1) V6G(1) NaN ...
+                V6G(1) V7G(1) NaN V7G(1) V8G(1) NaN ...
+                V8G(1) V1G(1)], 'Ydata', [V1G(2) V2G(2) NaN ...
+                V2G(2) V3G(2) NaN V3G(2) V4G(2) NaN ...
+                V4G(2) V5G(2) NaN V5G(2) V6G(2) NaN ...
+                V6G(2) V7G(2) NaN V7G(2) V8G(2) NaN ...
+                V8G(2) V1G(2)]);
             
 %             plot([V1G(1),V2G(1)],[V1G(2),V2G(2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
 %             hold on
@@ -365,11 +391,12 @@ while(~exit)
             risk_score = risk_score + Risk_Assessment(RefPose1',RefPose2',ObstaclePose1',ObstaclePose2',Pos_Car,Vehicle);
         end
         drawnow limitrate;
+%         pause(0.06);
         toc
     end
     
     if flag_loop2 && ~exit && ~empty(angle)
-        time_stop = now;   % record stop time
+%         time_stop = now;   % record stop time
         % clear all the subscribers
         sub_steering_angle = 0;
         velometer = 0;
@@ -377,7 +404,7 @@ while(~exit)
         parking_slot = 0;
         Vehicle_pose2D = 0;
         
-        parkingtime = caltime(time_start, time_stop);
+%         parkingtime = caltime(time_start, time_stop);
         flag_loop2 = 0;
         % record the latest position
         last_Ref = [p_fl(1:2)'; p_fr(1:2)'; p_rr(1:2)'; p_rl(1:2)'; ...
@@ -427,13 +454,13 @@ while(~exit)
 
             %显示泊车时间与评分
             %x=[Time_score, acc_score, com_score, rot_score, risk, 10-score];
-            axes(handles.sc1); set(handles.sc1,'fontsize',15);
-            pie([score(1,3), score(2,3), score(3,3), score(4,3), score(5,3)], ...
-                {sprintf('%s\n','时间'), ...
-                sprintf('%s\n','精度'), ...
-                sprintf('%s\n','安全'), ...
-                sprintf('%s\n','舒适'), ...
-                sprintf('%s\n','转向')}); 
+%             axes(handles.sc1); set(handles.sc1,'fontsize',15);
+%             pie([score(1,3), score(2,3), score(3,3), score(4,3), score(5,3)], ...
+%                 {sprintf('%s\n','时间'), ...
+%                 sprintf('%s\n','精度'), ...
+%                 sprintf('%s\n','安全'), ...
+%                 sprintf('%s\n','舒适'), ...
+%                 sprintf('%s\n','转向')}); 
 %             pie([score(1,3), score(2,3), score(3,3), score(4,3), score(5,3)], ...
 %                 {sprintf('%s\n','Time')+string(round(100 * score(1,3)))+'%', ...
 %                 sprintf('%s\n','Acc')+string(round(100 * score(2,3)))+'%', ...
@@ -445,6 +472,48 @@ while(~exit)
             set(handles.safetyScore, 'String', [num2str(score(3,2), '%.2f'), '/', num2str(10*score(3,1),'%.2f'), '            ', num2str(round(100 * score(3,4)), '%d'), '%']);
             set(handles.comScore, 'String', [num2str(score(4,2), '%.2f'), '/', num2str(10*score(4,1),'%.2f'), '            ', num2str(round(100 * score(4,4)), '%d'), '%']);
             set(handles.rotScore, 'String', [num2str(score(5,2), '%.2f'), '/', num2str(10*score(5,1),'%.2f'), '            ', num2str(round(100 * score(5,4)), '%d'), '%']);
+            
+            try 
+                scoreList = readtable(['DataSave/成绩记录' datestr(now, 'yymmdd')]);
+            catch ME
+                if all(ME.identifier == 'MATLAB:textio:textio:FileNotFound')
+                    set(handles.pkResult, 'String', '今日暂无机器成绩记录', 'FontSize', 18, 'ForegroundColor', 'k');
+                else
+                    set(handles.pkResult, 'String', ME.identifier, 'FontSize', 14, 'ForegroundColor', 'k');
+                end
+            end
+            
+            if exist('scoreList', 'var')
+                scoreBot = scoreList(ismissing(scoreList(:,2), '机器'),:);
+                if ~isempty(scoreBot)
+%                     set(handles.pkResult, 'String', '今日暂无机器成绩记录', 'FontSize', 18, 'ForegroundColor', 'k');
+%                 else
+                    botScoreArray = table2array(scoreBot(end, 4 : 9))';
+                    humanScoreArray = [sum(score(:,2)); score(:,2)];
+                    redArray = [handles.myScore, handles.myTimeScore, handles.myAccScore, ...
+                        handles.mySafetyScore, handles.myComScore, handles.myRotScore];
+                    set(redArray, {'String'}, cellfun(@(x) num2str(x, '%.2f'), ...
+                        num2cell(humanScoreArray), 'UniformOutput', false));
+                    greenArray = redArray;
+                    redArray(humanScoreArray <= botScoreArray) = [];
+                    greenArray(humanScoreArray >= botScoreArray) = [];
+                    set(redArray, 'BackgroundColor', 'red');
+                    set(greenArray, 'BackgroundColor', 'green');
+                    set([handles.botScore, handles.botTimeScore, handles.botAccScore, ...
+                        handles.botSafetyScore, handles.botComScore, handles.botRotScore], {'String'}, ...
+                        cellfun(@(x) num2str(x, '%.2f'), num2cell(botScoreArray), 'UniformOutput', false));
+                    if humanScoreArray(1) > botScoreArray(1)
+                        set(handles.pkResult, 'String', '胜利', 'ForegroundColor', 'red','FontSize', 50);
+                    elseif humanScoreArray(1) == botScoreArray(1)
+                        set(handles.pkResult, 'String', '平局', 'ForegroundColor', 'black', 'FontSize', 50);
+                    else
+                        set(handles.pkResult, 'String', '失败', 'ForegroundColor', 'black', 'FontSize', 50);
+                    end
+                    set(handles.push_pk, 'Visible', 1);
+                end
+            end
+            
+            set(handles.ui_ScoreDetail, 'Visible', 1);
         else
             score = zeros(5,4);
             setlog(handles, '车辆未完全泊入库位中，本次泊车成绩为0分。');
@@ -494,11 +563,14 @@ if ~stop
     set(handles.push_start,'String','结束泊车');
     setlog(handles, '泊车开始。');
     setlog(handles, datestr(now));
-    set(handles.push_show,'Visible',0);
+    set([handles.push_show, handles.ui_score, handles.ui_ScoreDetail, ...
+        handles.ui_pk, handles.push_pk],'Visible',0);
+    set(handles.push_pk, 'String', '显示人机比拼结果');
 else
     set(handles.push_start,'String','开始泊车');
     setlog(handles, '泊车结束。');
     setlog(handles, datestr(now));
+    set(handles.ui_score, 'Visible', 1);
 end
 
 % --- Set GUI
@@ -509,7 +581,7 @@ global p_width
 global displaymethod
 
 set(handles.ui_paraset, 'Visible', 0);
-set(handles.ui_show, 'Visible', 1);
+set([handles.ui_show, handles.ui_tr, handles.ui_msg], 'Visible', 1);
 xmin = str2num(get(handles.set_xmin,'String'));
 xmax = str2num(get(handles.set_xmax,'String'));
 ymin = str2num(get(handles.set_ymin,'String'));
@@ -529,41 +601,32 @@ global flag_loop2;
 global PubArrayText;
 global h_tr;
 global flag_show;
+global flag_pk;
 global last_Ref;
 
 stop = 1;
 flag_loop2 = 0;
 h_tr = 0;
 flag_show = 0;
+flag_pk = 0;
 PubArrayText = sprintf('%s\n','');
 last_Ref = zeros(12,2);
 
 set(handles.ui_paraset, 'Visible', 1);
-set(handles.ui_show, 'Visible', 0);
-set(handles.push_show,'Visible',0);
+set([handles.ui_show,handles.ui_tr, handles.ui_msg, ...
+    handles.ui_score, handles.push_show, handles.ui_pk, handles.push_pk], 'Visible', 0);
 
 set(handles.push_start,'String','开始泊车');
 set(handles.push_show,'String','显示轨迹');
+set(handles.push_pk, 'String', '显示人机比拼结果');
 set(handles.Time, 'String', '');
 set(handles.Notice,'String',PubArrayText);
 
 clear_graph(handles);
 
-set(handles.P_length,'string','');
-set(handles.angle,'string','');
-set(handles.VehicleSpeed,'string','');
-set(handles.Localay,'string','');
-set(handles.Localax,'string','');
-set(handles.xError,'string','');
-set(handles.yError,'string','');
-set(handles.HeadingAngleError,'string','');
-set(handles.score,'string','');
-
-set(handles.St_angle,'Value',0);
-set(handles.St_VehicleSpeed,'Value',0);
-set(handles.St_LocalA,'Value',0);
-set(handles.St_parkingSlot,'Value',0);
-set(handles.St_vehiclePose,'Value',0);
+set([handles.P_length, handles.angle, handles.VehicleSpeed, ...
+    handles.Localay, handles.Localax, handles.xError, ...
+    handles.yError, handles.HeadingAngleError], 'string','');
 
 % --- Exit GUI
 function ExitGUI(handles)
@@ -591,6 +654,18 @@ else
     setlog(handles,'隐藏轨迹。');
     hidetrajectory(handles, h_tr, last_Ref);
     set(handles.push_show,'String','显示轨迹');
+end
+
+function ShowPK(handles)
+global flag_pk
+
+flag_pk = ~flag_pk;
+if flag_pk
+    set(handles.ui_pk, 'Visible', 1);
+    set(handles.push_pk, 'String', '隐藏人机比拼结果');
+else
+    set(handles.ui_pk, 'Visible', 0);
+    set(handles.push_pk, 'String', '显示人机比拼结果');
 end
 
 % --- Update topic message
@@ -725,7 +800,8 @@ if n(2) > size(h,2)
 end
 
 % --- plot polygon(4 or 8 sides), the points should be input according to their order in
-% polygon
+% polygon.
+% DO NOT USE THIS FUNCTION
 function PlotPolygon(handles, num, varargin)
 axes(handles.Trajectory);
 if nargin == 6
@@ -904,7 +980,7 @@ PlotPolygon(handles, 7, Ref(13,:), Ref(14,:), Ref(15,:), Ref(16,:),Ref(17,:), Re
 % --- Clear graph
 function clear_graph(handles)
 
-axes(handles.sc1); cla(handles.sc1); set(handles.sc1, 'XTick', {}, 'YTick', {});
+% axes(handles.sc1); cla(handles.sc1); set(handles.sc1, 'XTick', {}, 'YTick', {});
 set(handles.timeScore, 'string', ' ');
 set(handles.accScore, 'string', ' ');
 set(handles.safetyScore, 'string', ' ');
@@ -1254,3 +1330,22 @@ function St_Debug_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of St_Debug
+
+
+% --- Executes on button press in timer.
+function timer_Callback(hObject, eventdata, handles)
+% hObject    handle to timer (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of timer
+
+
+% --- Executes on button press in push_pk.
+function push_pk_Callback(hObject, eventdata, handles)
+% hObject    handle to push_pk (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+if get(handles.push_pk, 'Value') == 1
+    ShowPK(handles);
+end
