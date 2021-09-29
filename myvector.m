@@ -62,6 +62,13 @@ classdef myvector < handle
         function val = get_data(obj)
            val = obj.data(1 : obj.indice, :);
         end
+        
+        function val = get_above(obj, row)
+            if(row <=0 || obj.indice < row)
+                error('input error');
+            end
+            val = obj.data(1 : row, :);
+        end
     end
 end
 
