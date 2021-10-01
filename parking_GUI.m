@@ -54,6 +54,7 @@ function parking_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to parking_GUI (see VARARGIN)
 addpath('Callbacks');
 addpath('Rank');
+addpath('gui_jpg');
 global PubArrayText % show interaction message
 global flag_show    % related to trajectory showing
 global flag_pk      % related to the ui.pk visibility
@@ -657,6 +658,9 @@ function ExitGUI(handles)
 global exit
 
 rosshutdown;
+rmpath('Callbacks');
+rmpath('Rank');
+rmpath('gui_jpg');
 setlog(handles, '正在退出......');
 exit = 1;
 
@@ -1226,14 +1230,11 @@ function push_close_Callback(hObject, eventdata, handles)
 % hObject    handle to push_close (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global exit
 
 if get(handles.push_close, 'value')
-    rosshutdown;
-    setlog(handles, '正在退出......');
-    exit = 1;
+    ExitGUI(handles);
 end
-close(gcf)
+
 
 
 % --- Executes on button press in St_save.
