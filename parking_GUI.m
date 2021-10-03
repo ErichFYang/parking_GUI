@@ -23,7 +23,7 @@ function varargout = parking_GUI(varargin)
 
 % Edit the above text to modify the response to help parking_GUI
 
-% Last Modified by GUIDE v2.5 21-Sep-2021 14:45:46
+% Last Modified by GUIDE v2.5 03-Oct-2021 15:40:59
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -52,9 +52,9 @@ function parking_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to parking_GUI (see VARARGIN)
-addpath('Callbacks');
+
+% addpath('Callbacks');
 addpath('Rank');
-addpath('gui_jpg');
 global PubArrayText % show interaction message
 global flag_show    % related to trajectory showing
 global flag_pk      % related to the ui.pk visibility
@@ -110,7 +110,7 @@ global init_flag;
 risk_score = 0;
 stop = 1;   
 exit = 0;  
-last_Ref = zeros(12,2);
+last_Ref = zeros(2,20);
 init_flag = 0;
 parkingtime = 0;
 
@@ -147,12 +147,21 @@ imu = rossubscriber('/imu/data', 'sensor_msgs/Imu',{@imuCallback,LocalA});
 parkingSlot = myvector(18);
 parkingSlot_indice = 0;
 parking_slot = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped',{@parkingslotCallback,parkingSlot}, 'BufferSize', 1);
+parkSub = rossubscriber('/parking_slot_info', 'apa_msgs/SlotInfoStamped');
 
 %       {time,localx,localy,yaw}
 vehiclePose = myvector(4);
 vehiclePose_indice = 0;
 Vehicle_pose2D = rossubscriber('/odometer/local_map/base_link', 'nav_msgs/Odometry',{@Vehicle_pose2DCallback,vehiclePose}, 'BufferSize', 1);
+vehicleSub = rossubscriber('/odometer/local_map/base_link', 'nav_msgs/Odometry');
 
+% P-8, R-7, N-6, D-5
+gearSub = rossubscriber('/shift_position', 'apa_msgs/IntStamped');
+
+% start-1, stop-0;
+enableSub = rossubscriber('/time_enable', 'apa_msgs/IntStamped');
+
+pause(1);
 setlog(handles, '话题订阅成功！');
 myCount = 0;
 mytimer = tic;
@@ -160,6 +169,16 @@ mytimer = tic;
 %% main loop
 while(~exit)
     tic
+    try
+        if gearSub.LatestMessage.value ~= 8 || ...
+                (gearSub.LatestMessage.value ~= 8 && stop == 0) || ...
+                enableSub.LatestMessage.value == 1 || ...
+                (enableSub.LatestMessage.value == 0 && stop == 0)
+            StartStop(handles);
+        end
+    catch ME         
+    end
+        
     pause(0.05);
     %% when the parking process starts
     if ~(stop||init_flag)
@@ -202,22 +221,22 @@ while(~exit)
         recordnum = [size(angle), size(VehicleSpeed), size(LocalA), size(parkingSlot), size(vehiclePose)];
         if recordnum(1)~=0
             % record the latest position
-            last_Ref = [p_fl(1:2)'; p_fr(1:2)'; p_rr(1:2)'; p_rl(1:2)'; ...
-                Ref_fl; Ref_fr(1:2)'; Ref_rr(1:2)'; Ref_rl; ...
-                Obs_fl; Obs_fr(1:2)'; Obs_rr(1:2)'; Obs_rl; ...
-                V1G(1:2)';V2G(1:2)';V3G(1:2)';V4G(1:2)'; ...
-                V5G(1:2)';V6G(1:2)';V7G(1:2)';V8G(1:2)'];
+            last_Ref = [p_fl(1:2) p_fr(1:2) p_rr(1:2) p_rl(1:2) ...
+                Ref_fl Ref_fr(1:2) Ref_rr(1:2) Ref_rl ...
+                Obs_fl Obs_fr(1:2) Obs_rr(1:2) Obs_rl ...
+                V1G(1:2) V2G(1:2) V3G(1:2) V4G(1:2) ...
+                V5G(1:2) V6G(1:2) V7G(1:2) V8G(1:2)];
             
             % judge: did the car drive into the parking lot? (1-no, 0-yes)
             standardLine = Ref_rl - Obs_fl;
             standardLine(3) = 0;
-            lineGroup = last_Ref(13:20,:) - Obs_fl;
-            lineGroup(:,3) = 0;
-            judgeMatrix = zeros(8, 3);
+            lineGroup = last_Ref(:,13:20) - Obs_fl;
+            lineGroup(3,:) = 0;
+            judgeMatrix = zeros(3, 8);
             for number = 1 : 8
-                judgeMatrix(number, :) = cross(standardLine, lineGroup(number,:)) > 0;
+                judgeMatrix(:, number) = cross(standardLine, lineGroup(:,number)) > 0;
             end
-            if sum(judgeMatrix(:,3)) == 0
+            if sum(judgeMatrix(3,:)) == 0
                 %泊车时间评分
                 Time_score = T_Assessment(parkingtime);
                 fprintf('Time_score =%d\n', Time_score);
@@ -359,16 +378,62 @@ while(~exit)
     [latest_A_record, LocalA_indice, ~] = getmsg(LocalA, LocalA_indice, handles);
     
     [latest_speed_record, VehicleSpeed_indice, ~] = getmsg(VehicleSpeed, VehicleSpeed_indice, handles);
-    [latest_vehiclePose_record, vehiclePose_indice, updateVehiclePose] = getmsg(vehiclePose, vehiclePose_indice, handles);
-    LocalX = latest_vehiclePose_record(2); LocalY = latest_vehiclePose_record(3);
-    Yaw = latest_vehiclePose_record(4);
+%     [latest_vehiclePose_record, vehiclePose_indice, updateVehiclePose] = getmsg(vehiclePose, vehiclePose_indice, handles);
+%     LocalX = latest_vehiclePose_record(2); LocalY = latest_vehiclePose_record(3);
+%     Yaw = latest_vehiclePose_record(4);
     
-    [latest_parkingSlot_record, parkingSlot_indice, updateParkingSlot] = getmsg(parkingSlot, parkingSlot_indice, handles);
-    RefPose1 = latest_parkingSlot_record(2:3); RefPose2 = latest_parkingSlot_record(4:5);
-    RefPose3 = latest_parkingSlot_record(6:7); RefPose4 = latest_parkingSlot_record(8:9);
-    ObstaclePose1 = latest_parkingSlot_record(10:11); ObstaclePose2 = latest_parkingSlot_record(12:13);
-    ObstaclePose3 = latest_parkingSlot_record(14:15); ObstaclePose4 = latest_parkingSlot_record(16:17);
-    RefPoseTheta = latest_parkingSlot_record(18);
+    if isempty(vehicleSub.LatestMessage)
+        LocalX = NaN;
+    else
+        LocalX = vehicleSub.LatestMessage.Pose.Pose.Position.X;
+        LocalY = vehicleSub.LatestMessage.Pose.Pose.Position.Y;
+        q = [vehicleSub.LatestMessage.Pose.Pose.Orientation.W vehicleSub.LatestMessage.Pose.Pose.Orientation.X ...
+            vehicleSub.LatestMessage.Pose.Pose.Orientation.Y vehicleSub.LatestMessage.Pose.Pose.Orientation.Z];
+        EulAngle = quat2eul(q);
+        Yaw = EulAngle(1);
+%         fprintf([num2str(vehicleSub.LatestMessage.Header.Stamp.seconds) '\n']);
+    end
+   
+    
+%     [latest_parkingSlot_record, parkingSlot_indice, updateParkingSlot] = getmsg(parkingSlot, parkingSlot_indice, handles);
+%     RefPose1 = latest_parkingSlot_record(2:3)'; RefPose2 = latest_parkingSlot_record(4:5)';
+%     RefPose3 = latest_parkingSlot_record(6:7)'; RefPose4 = latest_parkingSlot_record(8:9)';
+%     ObstaclePose1 = latest_parkingSlot_record(10:11)'; ObstaclePose2 = latest_parkingSlot_record(12:13)';
+%     ObstaclePose3 = latest_parkingSlot_record(14:15)'; ObstaclePose4 = latest_parkingSlot_record(16:17)';
+%     RefPoseTheta = latest_parkingSlot_record(18);
+    if isempty(parkSub.LatestMessage)
+        RefPose1 = NaN;
+    else
+        RefPoseX = parkSub.LatestMessage.RefPose.X;
+        RefPoseY = parkSub.LatestMessage.RefPose.Y;
+        RefPoseTheta = parkSub.LatestMessage.RefPose.Theta;
+        RefExtend_X = parkSub.LatestMessage.RefExtendX;
+        RefExtend_Y = parkSub.LatestMessage.RefExtendY;
+        
+        T = [cos(RefPoseTheta), -sin(RefPoseTheta), RefPoseX; sin(RefPoseTheta), cos(RefPoseTheta), RefPoseY; 0, 0, 1];
+        RefPose1 = [RefPoseX;RefPoseY];
+        b = [ 0; RefExtend_Y; 1];
+        c = [ RefExtend_X;0;1];
+        d = [ RefExtend_X;RefExtend_Y; 1];
+        RefPose2 = T*b;  RefPose2(3) = [];
+        RefPose3 = T*c;  RefPose3(3) = [];
+        RefPose4 = T*d;  RefPose4(3) = [];
+        
+        ObstaclePoseX = parkSub.LatestMessage.ObstaclePose.X;
+        ObstaclePoseY = parkSub.LatestMessage.ObstaclePose.Y;
+        ObstacleTheta = parkSub.LatestMessage.ObstaclePose.Theta;
+        ObstacleExtend_X = parkSub.LatestMessage.ObstacleExtendX;
+        ObstacleExtend_Y = parkSub.LatestMessage.ObstacleExtendY;
+        T = [cos(ObstacleTheta), -sin(ObstacleTheta), ObstaclePoseX; sin(ObstacleTheta), cos(ObstacleTheta), ObstaclePoseY; 0, 0, 1];
+        ObstaclePose1 = [ObstaclePoseX;ObstaclePoseY];
+        b = [ 0; ObstacleExtend_Y; 1];
+        c = [ ObstacleExtend_X;0;1];
+        d = [ ObstacleExtend_X;ObstacleExtend_Y; 1];
+        ObstaclePose2 = T*b;  ObstaclePose2(3) = [];
+        ObstaclePose3 = T*c;  ObstaclePose3(3) = [];
+        ObstaclePose4 = T*d;  ObstaclePose4(3) = [];
+    end
+    
     
     if ~get(handles.ui_paraset, 'Visible')
         % parking time
@@ -383,7 +448,7 @@ while(~exit)
         %纵向加速度
         set(handles.Localax,'string',num2str(latest_A_record(2)/9.8,'%.2f'));
         
-        if ~isnan(RefPose1(1)) && updateParkingSlot
+        if ~isnan(RefPose1(1))
             % Target parking position
             VecObs = [ObstaclePose2(1) - ObstaclePose1(1), ObstaclePose2(2) - ObstaclePose1(2)];
             Theta_Obs = atan2(VecObs(2), VecObs(1));
@@ -466,38 +531,11 @@ while(~exit)
                 set(handles.Trajectory.UserData(2), 'XData', [Ref_fl(1), Ref_fr(1), Ref_rr(1), Ref_rl(1)], ...
                     'YData', [Ref_fl(2), Ref_fr(2), Ref_rr(2), Ref_rl(2)]);
                 
-                %             set(handles.Trajectory.UserData(15),'XData',[Obs_fl(1)+(Obs_fr(1)-Obs_fl(1))*3/4,Obs_rr(1)+(Obs_fr(1)-Obs_rr(1))*3/4],...
-                %                 'YData',[Obs_fl(2)+(Obs_fr(2)-Obs_fl(2))*3/4,Obs_rr(2)+(Obs_fr(2)-Obs_rr(2))*3/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(16),'XData',[Obs_fl(1)+(Obs_fr(1)-Obs_fl(1))*2/4,Obs_rr(1)+(Obs_fr(1)-Obs_rr(1))*2/4],...
-                %                 'YData',[Obs_fl(2)+(Obs_fr(2)-Obs_fl(2))*2/4,Obs_rr(2)+(Obs_fr(2)-Obs_rr(2))*2/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(17),'XData',[Obs_fl(1)+(Obs_fr(1)-Obs_fl(1))*1/4,Obs_rr(1)+(Obs_fr(1)-Obs_rr(1))*1/4],...
-                %                 'YData',[Obs_fl(2)+(Obs_fr(2)-Obs_fl(2))*1/4,Obs_rr(2)+(Obs_fr(2)-Obs_rr(2))*1/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(18),'XData',[Obs_fl(1),Obs_rr(1)],'YData',[Obs_fl(2),Obs_rr(2)],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(19),'XData',[Obs_fl(1)+(Obs_rl(1)-Obs_fl(1))*1/4,Obs_rr(1)+(Obs_rl(1)-Obs_rr(1))*1/4],...
-                %                 'YData',[Obs_fl(2)+(Obs_rl(2)-Obs_fl(2))*1/4,Obs_rr(2)+(Obs_rl(2)-Obs_rr(2))*1/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(20),'XData',[Obs_fl(1)+(Obs_rl(1)-Obs_fl(1))*2/4,Obs_rr(1)+(Obs_rl(1)-Obs_rr(1))*2/4],...
-                %                 'YData',[Obs_fl(2)+(Obs_rl(2)-Obs_fl(2))*2/4,Obs_rr(2)+(Obs_rl(2)-Obs_rr(2))*2/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(21),'XData',[Obs_fl(1)+(Obs_rl(1)-Obs_fl(1))*3/4,Obs_rr(1)+(Obs_rl(1)-Obs_rr(1))*3/4],...
-                %                 'YData',[Obs_fl(2)+(Obs_rl(2)-Obs_fl(2))*3/4,Obs_rr(2)+(Obs_rl(2)-Obs_rr(2))*3/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %
-                %             set(handles.Trajectory.UserData(22),'XData',[Ref_rl(1)+(Ref_rr(1)-Ref_rl(1))*3/4,Ref_rl(1)+(Ref_fl(1)-Ref_rl(1))*3/4],...
-                %                 'YData',[Ref_rl(2)+(Ref_rr(2)-Ref_rl(2))*3/4,Ref_rl(2)+(Ref_fl(2)-Ref_rl(2))*3/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(23),'XData',[Ref_rl(1)+(Ref_rr(1)-Ref_rl(1))*2/4,Ref_rl(1)+(Ref_fl(1)-Ref_rl(1))*2/4],...
-                %                 'YData',[Ref_rl(2)+(Ref_rr(2)-Ref_rl(2))*2/4,Ref_rl(2)+(Ref_fl(2)-Ref_rl(2))*2/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(24),'XData',[Ref_rl(1)+(Ref_rr(1)-Ref_rl(1))*1/4,Ref_rl(1)+(Ref_fl(1)-Ref_rl(1))*1/4],...
-                %                 'YData',[Ref_rl(2)+(Ref_rr(2)-Ref_rl(2))*1/4,Ref_rl(2)+(Ref_fl(2)-Ref_rl(2))*1/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(25),'XData',[Ref_rr(1),Ref_fl(1)],'YData',[Ref_rr(2),Ref_fl(2)],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(26),'XData',[Ref_fr(1)+(Ref_fl(1)-Ref_fr(1))*3/4,Ref_fr(1)+(Ref_rr(1)-Ref_fr(1))*3/4],...
-                %                 'YData',[Ref_fr(2)+(Ref_fl(2)-Ref_fr(2))*3/4,Ref_fr(2)+(Ref_rr(2)-Ref_fr(2))*3/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(27),'XData',[Ref_fr(1)+(Ref_fl(1)-Ref_fr(1))*2/4,Ref_fr(1)+(Ref_rr(1)-Ref_fr(1))*2/4],...
-                %                 'YData',[Ref_fr(2)+(Ref_fl(2)-Ref_fr(2))*2/4,Ref_fr(2)+(Ref_rr(2)-Ref_fr(2))*2/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
-                %             set(handles.Trajectory.UserData(28),'XData',[Ref_fr(1)+(Ref_fl(1)-Ref_fr(1))*1/4,Ref_fr(1)+(Ref_rr(1)-Ref_fr(1))*1/4],...
-                %                 'YData',[Ref_fr(2)+(Ref_fl(2)-Ref_fr(2))*1/4,Ref_fr(2)+(Ref_rr(2)-Ref_fr(2))*1/4],'Color',color,'LineStyle',linestyle,'LineWidth',linewidth);
                 myCount = ~myCount;
             end
         end
         
-        if ~isnan(LocalX) && updateVehiclePose
+        if ~isnan(LocalX)
             %% 记录当前车辆位置
             %求从车身坐标系到全局坐标系的刚体变换矩阵
             T = [cos(Yaw), -sin(Yaw), LocalX; sin(Yaw), cos(Yaw), LocalY; 0, 0, 1];
@@ -513,7 +551,6 @@ while(~exit)
             %             color = 'blue';
             %             linewidth = 0.5;
             %             linestyle = '-';
-            %             PlotPolygon(handles, 7, V1G, V2G, V3G, V4G, V5G, V6G, V7G, V8G);
             set(handles.Trajectory.UserData(7), 'XData', [V1G(1) V2G(1) NaN ...
                 V2G(1) V3G(1) NaN V3G(1) V4G(1) NaN ...
                 V4G(1) V5G(1) NaN V5G(1) V6G(1) NaN ...
@@ -565,7 +602,7 @@ while(~exit)
                 Pos_Car=[LocalX;LocalY;Yaw];
                 %             rfp1=[RefPose1(1);RefPose1(2)]; rfp2=[RefPose2(1); RefPose2(2)];
                 %             obp1=[ObstaclePose1(1);ObstaclePose1(2)]; obp2=[ObstaclePose2(1);ObstaclePose2(2)];
-                risk_score = risk_score + Risk_Assessment(RefPose1',RefPose2',ObstaclePose1',ObstaclePose2',Pos_Car,Vehicle);
+                risk_score = risk_score + Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle);
             end
         end
         drawnow limitrate;
@@ -603,7 +640,7 @@ global tr_ylim
 global p_width
 global displaymethod
 
-set(handles.ui_paraset, 'Visible', 0);
+set([handles.ui_paraset, handles.push_show], 'Visible', 0);
 set([handles.ui_show, handles.ui_tr, handles.ui_msg], 'Visible', 1);
 xmin = str2num(get(handles.set_xmin,'String'));
 xmax = str2num(get(handles.set_xmax,'String'));
@@ -658,9 +695,8 @@ function ExitGUI(handles)
 global exit
 
 rosshutdown;
-rmpath('Callbacks');
+% rmpath('Callbacks');
 rmpath('Rank');
-rmpath('gui_jpg');
 setlog(handles, '正在退出......');
 exit = 1;
 
@@ -931,7 +967,7 @@ setlog(handles, '显示完毕。');
 
 % --- hide trajectory
 function hidetrajectory(handles, h, Ref)
-
+Ref = Ref';
 if h == 0
     InitTrajectory(handles);
     
@@ -952,58 +988,12 @@ if h == 0
     set(handles.Trajectory.UserData(2), 'XData', [Ref(9,1), Ref(10,1), Ref(11,1), Ref(12,1)], ...
         'YData', [Ref(9,2), Ref(10,2), Ref(11,2), Ref(12,2)]);
     
-    
-%     %绘制算法目标车位
-%     color = 'red';
-%     linewidth = 0.5;
-%     linestyle = '-';
-%     plot([Ref(1,1), Ref(2,1)],[Ref(1,2), Ref(2,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(2,1), Ref(3,1)],[Ref(2,2), Ref(3,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(3,1), Ref(4,1)],[Ref(3,2), Ref(4,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(4,1), Ref(1,1)],[Ref(4,2), Ref(1,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     %绘制实际泊车空间
-%     color = 'green';
-%     linewidth = 0.5;
-%     linestyle = '-';
-%     
-%     plot([Ref(8,1), Ref(7,1)],[Ref(8,2), Ref(7,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(7,1), Ref(10,1)],[Ref(7,2), Ref(10,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(10,1), Ref(9,1)],[Ref(10,2), Ref(9,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(9,1), Ref(8,1)],[Ref(9,2), Ref(8,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     %绘制障碍物方块
-%     color = 'black';
-%     linewidth = 0.5;
-%     linestyle = '-';
-%     
-%     plot([Ref(9,1),Ref(12,1)],[Ref(9,2),Ref(12,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(12,1),Ref(11,1)],[Ref(12,2),Ref(11,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(11,1),Ref(10,1)],[Ref(11,2),Ref(10,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(8,1),Ref(5,1)],[Ref(8,2),Ref(5,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(5,1),Ref(6,1)],[Ref(5,2),Ref(6,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     plot([Ref(6,1),Ref(7,1)],[Ref(6,2),Ref(7,2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-%     %填充
-%     color = 'black';
-%     facealpha = 0.5;
-%     
-%     fill([Ref(9,1), Ref(10,1), Ref(11,1), Ref(12,1)],[Ref(9,2), Ref(10,2), Ref(11,2), Ref(12,2)],...
-%         color,'FaceAlpha',facealpha);
-%     fill([Ref(5,1), Ref(6,1), Ref(7,1), Ref(8,1)],[Ref(5,2), Ref(6,2), Ref(7,2), Ref(8,2)],...
-%         color,'FaceAlpha',facealpha);
-%     set(handles.Trajectory,'XLim',tr_xlim,'YLim',tr_ylim);
 else
     set(h,'Visible',0);
 end
 %车辆 7
 PlotPolygon(handles, 7, Ref(13,:), Ref(14,:), Ref(15,:), Ref(16,:),Ref(17,:), Ref(18,:), Ref(19,:), Ref(20,:));
 
-% plot([Ref(13,1),Ref(14,1)],[Ref(13,2),Ref(14,2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
-% plot([Ref(15,1),Ref(14,1)],[Ref(15,2),Ref(14,2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
-% plot([Ref(15,1),Ref(16,1)],[Ref(15,2),Ref(16,2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
-% plot([Ref(17,1),Ref(16,1)],[Ref(17,2),Ref(16,2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
-% plot([Ref(17,1),Ref(18,1)],[Ref(17,2),Ref(18,2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
-% plot([Ref(19,1),Ref(18,1)],[Ref(19,2),Ref(18,2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
-% plot([Ref(19,1),Ref(20,1)],[Ref(19,2),Ref(20,2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
-% plot([Ref(13,1),Ref(20,1)],[Ref(13,2),Ref(20,2)],'Color',color,'LineWidth', linewidth, 'LineStyle', linestyle);
 
 % --- Clear graph
 function clear_graph(handles)
@@ -1034,6 +1024,71 @@ set(handles.Trajectory, 'UserData', [patch([0 0 0 0],[0 0 0 0],'k'), patch([0 0 
     line([0 0],[0 0],'Color','blue','LineWidth',0.5,'LineStyle','-')]);   % vehicle
 hold off
 set(handles.Trajectory,'XLim',tr_xlim,'YLim',tr_ylim);
+
+%--- CallBack
+function Vehicle_pose2DCallback(~,message,buffer)
+    LocalX = message.Pose.Pose.Position.X;
+    LocalY = message.Pose.Pose.Position.Y;
+    q = [message.Pose.Pose.Orientation.W message.Pose.Pose.Orientation.X ...
+        message.Pose.Pose.Orientation.Y message.Pose.Pose.Orientation.Z];
+    EulAngle = quat2eul(q);
+
+    buffer.push_back([message.Header.Stamp.seconds,LocalX,LocalY,EulAngle(1)])
+
+function parkingslotCallback(~,message,buffer)
+        
+RefPoseX = message.RefPose.X;
+RefPoseY = message.RefPose.Y;
+RefPoseTheta = message.RefPose.Theta;
+RefExtend_X = message.RefExtendX;
+RefExtend_Y = message.RefExtendY;
+
+T1 = [cos(RefPoseTheta), -sin(RefPoseTheta), RefPoseX; sin(RefPoseTheta), cos(RefPoseTheta), RefPoseY; 0, 0, 1];
+RefPose1 = [RefPoseX;RefPoseY;1];
+b1 = [ 0; RefExtend_Y; 1];
+c1 = [ RefExtend_X;0;1];
+d1 = [ RefExtend_X;RefExtend_Y; 1];
+RefPose2 = T1*b1;
+RefPose3 = T1*c1;
+RefPose4 = T1*d1;
+
+ObstaclePoseX = message.ObstaclePose.X;
+ObstaclePoseY = message.ObstaclePose.Y;
+ObstacleTheta = message.ObstaclePose.Theta;
+ObstacleExtend_X = message.ObstacleExtendX;
+ObstacleExtend_Y = message.ObstacleExtendY;
+T2 = [cos(ObstacleTheta), -sin(ObstacleTheta), ObstaclePoseX; sin(ObstacleTheta), cos(ObstacleTheta), ObstaclePoseY; 0, 0, 1];
+ObstaclePose1 = [ObstaclePoseX,ObstaclePoseY];
+b2 = [ 0; ObstacleExtend_Y; 1];
+c2 = [ ObstacleExtend_X;0;1];
+d2 = [ ObstacleExtend_X;ObstacleExtend_Y; 1];
+ObstaclePose2 = T2*b2;
+ObstaclePose3 = T2*c2;
+ObstaclePose4 = T2*d2;
+
+buffer.push_back([message.Header.Stamp.seconds,RefPose1(1),RefPose1(2), ...
+    RefPose2(1),RefPose2(2),RefPose3(1),RefPose3(2),RefPose4(1),RefPose4(2), ...
+    ObstaclePose1(1), ObstaclePose1(2),ObstaclePose2(1), ObstaclePose2(2), ...
+    ObstaclePose3(1), ObstaclePose3(2),ObstaclePose4(1), ObstaclePose4(2), ...
+    RefPoseTheta])
+
+function imuCallback(~,message,buffer)
+Ax = message.LinearAcceleration.X;
+Ay = message.LinearAcceleration.Y;
+buffer.push_back([message.Header.Stamp.seconds, Ax, Ay])
+
+
+function SteeringAngleCallback(~,message,buffer)
+buffer.push_back([message.Header.Stamp.seconds, -message.Angle]);
+
+function velometerCallback(~,message,buffer)
+
+Vx = message.Twist.Linear.X;
+Vy = message.Twist.Linear.Y;
+Speed=sqrt(Vx*Vx+Vy*Vy);
+buffer.push_back([message.Header.Stamp.seconds, Speed]);
+
+
 
 % --- Executes on button press in push_paraset.
 function push_paraset_Callback(hObject, eventdata, handles)
@@ -1374,3 +1429,21 @@ function push_pk_Callback(hObject, eventdata, handles)
 if get(handles.push_pk, 'Value') == 1
     ShowPK(handles);
 end
+
+
+% --- Executes on button press in St_gear.
+function St_gear_Callback(hObject, eventdata, handles)
+% hObject    handle to St_gear (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of St_gear
+
+
+% --- Executes on button press in St_en.
+function St_en_Callback(hObject, eventdata, handles)
+% hObject    handle to St_en (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of St_en
