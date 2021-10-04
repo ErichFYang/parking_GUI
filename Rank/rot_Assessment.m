@@ -12,12 +12,14 @@ angle(:,1) = fix(angle(:,1) ./ timeRange);
 rowStart = 1;
 rowEnd = size(angle,1);
 rotCount = 0;
+oldTime = NaN;
 for counter = 1 : size(VehicleSpeed, 1)
-    row = (find(angle(rowStart:rowEnd,1) == VehicleSpeed(counter, 1), 10));
+    row = (find(angle(rowStart:rowEnd,1) == VehicleSpeed(counter, 1), 30));
     row = row + rowStart - 1;
-    if isempty(row)
+    if isempty(row) || VehicleSpeed(counter, 1) == oldTime
         continue
     end
+    oldTime = VehicleSpedd(counter, 1);
     angleChange = max(angle(max(row(1), 1): min(row(end), rowEnd), 2)) - ...
         min(angle(max(row(1), 1): min(row(end), rowEnd), 2)); 
     % count the rot times
@@ -53,5 +55,5 @@ function const = timeRange
 end
 
 function const = angleLimit
-    const = 1;   % unit: degree
+    const = 3;   % unit: degree
 end

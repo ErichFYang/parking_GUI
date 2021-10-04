@@ -1,41 +1,32 @@
 %舒适性com：泊车过程中横向加速度大于3.5m/s^2或纵向加速度大于3.5m/s^2的总时长(阈值可根据情况自己定义)
 function [score]=com_Assessment(LocalAx,LocalAy)
-num_LocalAx=0;
-num_LocalAy=0;
+axThreshold = 3.5;
+ayThreshold = 3.5;
+numAll = size(LocalAx);
 
 %纵向加速度时长计数
-rx=size(LocalAx); %认为LocalAx是两列的矩阵，即c=2，第一列为数值第二列为加速度
-for i=1:rx
-    if LocalAx(i)>3.5
-        num_LocalAx=num_LocalAx+1;
-    end
-end
+numLocalAx = sum(LocalAx > axThreshold);
 
 %横向加速度时长计数
-ry=size(LocalAy); %认为LocalAx是两列的矩阵，即c=2，第一列为数值第二列为加速度
-for i=1:ry
-    if LocalAy(i)>3.5
-        num_LocalAy=num_LocalAy+1;
-    end
-end
+numLocalAy = sum(LocalAy > ayThreshold);
 
 %纵向分值
-if num_LocalAx<=(0.05*rx) % 5%以内的时间超过阈值
+if numLocalAx<=(0.05*numAll) % 5%以内的时间超过阈值
     score_LocalAx=10;
-elseif ((0.05*rx)<num_LocalAx)&&(num_LocalAx<=(0.1*rx))
+elseif ((0.05*numAll)<numLocalAx)&&(numLocalAx<=(0.1*numAll))
     score_LocalAx=6;
-elseif ((0.1*rx)<num_LocalAx)&&(num_LocalAx<=(0.2*rx))
+elseif ((0.1*numAll)<numLocalAx)&&(numLocalAx<=(0.2*numAll))
     score_LocalAx=2;
 else
     score_LocalAx=0;
 end
 
 %横向分值
-if num_LocalAy<=(0.05*ry) % 5%以内的时间超过阈值
+if numLocalAy<=(0.05*numAll) % 5%以内的时间超过阈值
     score_LocalAy=10;
-elseif ((0.05*ry)<num_LocalAy)&&(num_LocalAy<=(0.1*ry))
+elseif ((0.05*numAll)<numLocalAy)&&(numLocalAy<=(0.1*numAll))
     score_LocalAy=6;
-elseif ((0.1*ry)<num_LocalAy)&&(num_LocalAy<=(0.2*ry))
+elseif ((0.1*numAll)<numLocalAy)&&(numLocalAy<=(0.2*numAll))
     score_LocalAy=2;
 else
     score_LocalAy=0;
