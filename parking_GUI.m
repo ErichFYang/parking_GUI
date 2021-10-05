@@ -23,7 +23,7 @@ function varargout = parking_GUI(varargin)
 
 % Edit the above text to modify the response to help parking_GUI
 
-% Last Modified by GUIDE v2.5 03-Oct-2021 15:40:59
+% Last Modified by GUIDE v2.5 04-Oct-2021 20:46:14
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -59,9 +59,11 @@ global PubArrayText % show interaction message
 global flag_show    % related to trajectory showing
 global flag_pk      % related to the ui.pk visibility
 global h_tr         % handles of trajectory
+global machine      % is machine?
 flag_show = 0;
 flag_pk = 0;
 h_tr = 0;
+machine = 1;
 
 rosshutdown;
 rosinit;
@@ -106,6 +108,7 @@ global yError;
 global HeadingAngleError;
 global risk_score;
 global init_flag;
+global machine;
 
 risk_score = 0;
 stop = 1;   
@@ -168,12 +171,12 @@ mytimer = tic;
 
 %% main loop
 while(~exit)
-    tic
+%     tic
     try
-        if gearSub.LatestMessage.value ~= 8 || ...
-                (gearSub.LatestMessage.value ~= 8 && stop == 0) || ...
-                enableSub.LatestMessage.value == 1 || ...
-                (enableSub.LatestMessage.value == 0 && stop == 0)
+        if (gearSub.LatestMessage.Value ~= 8 && stop == 1 && ~machine) || ...
+                (gearSub.LatestMessage.Value == 8 && stop == 0 && ~machine) || ...
+                (enableSub.LatestMessage.Value == 1 && stop == 1 && machine) || ...
+                (enableSub.LatestMessage.Value == 0 && stop == 0 && machine)
             StartStop(handles);
         end
     catch ME         
@@ -219,7 +222,7 @@ while(~exit)
     %% when the parking process finishes
     if stop&&init_flag
         recordnum = [size(angle), size(VehicleSpeed), size(LocalA), size(parkingSlot), size(vehiclePose)];
-        if recordnum(1)~=0
+        if recordnum(4)~=0
             % record the latest position
             last_Ref = [p_fl(1:2) p_fr(1:2) p_rr(1:2) p_rl(1:2) ...
                 Ref_fl Ref_fr(1:2) Ref_rr(1:2) Ref_rl ...
@@ -378,21 +381,22 @@ while(~exit)
     [latest_A_record, LocalA_indice, ~] = getmsg(LocalA, LocalA_indice, handles);
     
     [latest_speed_record, VehicleSpeed_indice, ~] = getmsg(VehicleSpeed, VehicleSpeed_indice, handles);
-%     [latest_vehiclePose_record, vehiclePose_indice, updateVehiclePose] = getmsg(vehiclePose, vehiclePose_indice, handles);
-%     LocalX = latest_vehiclePose_record(2); LocalY = latest_vehiclePose_record(3);
-%     Yaw = latest_vehiclePose_record(4);
+    [latest_vehiclePose_record, vehiclePose_indice, updateVehiclePose] = getmsg(vehiclePose, vehiclePose_indice, handles);
+    LocalX = latest_vehiclePose_record(2); LocalY = latest_vehiclePose_record(3);
+    Yaw = latest_vehiclePose_record(4);
     
-    if isempty(vehicleSub.LatestMessage)
-        LocalX = NaN;
-    else
-        LocalX = vehicleSub.LatestMessage.Pose.Pose.Position.X;
-        LocalY = vehicleSub.LatestMessage.Pose.Pose.Position.Y;
-        q = [vehicleSub.LatestMessage.Pose.Pose.Orientation.W vehicleSub.LatestMessage.Pose.Pose.Orientation.X ...
-            vehicleSub.LatestMessage.Pose.Pose.Orientation.Y vehicleSub.LatestMessage.Pose.Pose.Orientation.Z];
-        EulAngle = quat2eul(q);
-        Yaw = EulAngle(1);
-%         fprintf([num2str(vehicleSub.LatestMessage.Header.Stamp.seconds) '\n']);
-    end
+    fprintf([num2str(vehicleSub.LatestMessage.Header.Stamp.seconds, '%.2f') '\n']);
+%     if isempty(vehicleSub.LatestMessage)
+%         LocalX = NaN;
+%     else
+%         LocalX = vehicleSub.LatestMessage.Pose.Pose.Position.X;
+%         LocalY = vehicleSub.LatestMessage.Pose.Pose.Position.Y;
+%         q = [vehicleSub.LatestMessage.Pose.Pose.Orientation.W vehicleSub.LatestMessage.Pose.Pose.Orientation.X ...
+%             vehicleSub.LatestMessage.Pose.Pose.Orientation.Y vehicleSub.LatestMessage.Pose.Pose.Orientation.Z];
+%         EulAngle = quat2eul(q);
+%         Yaw = EulAngle(1);
+% %         fprintf([num2str(vehicleSub.LatestMessage.Header.Stamp.seconds) '\n']);
+%     end
    
     
 %     [latest_parkingSlot_record, parkingSlot_indice, updateParkingSlot] = getmsg(parkingSlot, parkingSlot_indice, handles);
@@ -401,39 +405,39 @@ while(~exit)
 %     ObstaclePose1 = latest_parkingSlot_record(10:11)'; ObstaclePose2 = latest_parkingSlot_record(12:13)';
 %     ObstaclePose3 = latest_parkingSlot_record(14:15)'; ObstaclePose4 = latest_parkingSlot_record(16:17)';
 %     RefPoseTheta = latest_parkingSlot_record(18);
-    if isempty(parkSub.LatestMessage)
-        RefPose1 = NaN;
-    else
-        RefPoseX = parkSub.LatestMessage.RefPose.X;
-        RefPoseY = parkSub.LatestMessage.RefPose.Y;
-        RefPoseTheta = parkSub.LatestMessage.RefPose.Theta;
-        RefExtend_X = parkSub.LatestMessage.RefExtendX;
-        RefExtend_Y = parkSub.LatestMessage.RefExtendY;
-        
-        T = [cos(RefPoseTheta), -sin(RefPoseTheta), RefPoseX; sin(RefPoseTheta), cos(RefPoseTheta), RefPoseY; 0, 0, 1];
-        RefPose1 = [RefPoseX;RefPoseY];
-        b = [ 0; RefExtend_Y; 1];
-        c = [ RefExtend_X;0;1];
-        d = [ RefExtend_X;RefExtend_Y; 1];
-        RefPose2 = T*b;  RefPose2(3) = [];
-        RefPose3 = T*c;  RefPose3(3) = [];
-        RefPose4 = T*d;  RefPose4(3) = [];
-        
-        ObstaclePoseX = parkSub.LatestMessage.ObstaclePose.X;
-        ObstaclePoseY = parkSub.LatestMessage.ObstaclePose.Y;
-        ObstacleTheta = parkSub.LatestMessage.ObstaclePose.Theta;
-        ObstacleExtend_X = parkSub.LatestMessage.ObstacleExtendX;
-        ObstacleExtend_Y = parkSub.LatestMessage.ObstacleExtendY;
-        T = [cos(ObstacleTheta), -sin(ObstacleTheta), ObstaclePoseX; sin(ObstacleTheta), cos(ObstacleTheta), ObstaclePoseY; 0, 0, 1];
-        ObstaclePose1 = [ObstaclePoseX;ObstaclePoseY];
-        b = [ 0; ObstacleExtend_Y; 1];
-        c = [ ObstacleExtend_X;0;1];
-        d = [ ObstacleExtend_X;ObstacleExtend_Y; 1];
-        ObstaclePose2 = T*b;  ObstaclePose2(3) = [];
-        ObstaclePose3 = T*c;  ObstaclePose3(3) = [];
-        ObstaclePose4 = T*d;  ObstaclePose4(3) = [];
-    end
-    
+%     if isempty(parkSub.LatestMessage)
+%         RefPose1 = NaN;
+%     else
+%         RefPoseX = parkSub.LatestMessage.RefPose.X;
+%         RefPoseY = parkSub.LatestMessage.RefPose.Y;
+%         RefPoseTheta = parkSub.LatestMessage.RefPose.Theta;
+%         RefExtend_X = parkSub.LatestMessage.RefExtendX;
+%         RefExtend_Y = parkSub.LatestMessage.RefExtendY;
+%         
+%         T = [cos(RefPoseTheta), -sin(RefPoseTheta), RefPoseX; sin(RefPoseTheta), cos(RefPoseTheta), RefPoseY; 0, 0, 1];
+%         RefPose1 = [RefPoseX;RefPoseY];
+%         b = [ 0; RefExtend_Y; 1];
+%         c = [ RefExtend_X;0;1];
+%         d = [ RefExtend_X;RefExtend_Y; 1];
+%         RefPose2 = T*b;  RefPose2(3) = [];
+%         RefPose3 = T*c;  RefPose3(3) = [];
+%         RefPose4 = T*d;  RefPose4(3) = [];
+%         
+%         ObstaclePoseX = parkSub.LatestMessage.ObstaclePose.X;
+%         ObstaclePoseY = parkSub.LatestMessage.ObstaclePose.Y;
+%         ObstacleTheta = parkSub.LatestMessage.ObstaclePose.Theta;
+%         ObstacleExtend_X = parkSub.LatestMessage.ObstacleExtendX;
+%         ObstacleExtend_Y = parkSub.LatestMessage.ObstacleExtendY;
+%         T = [cos(ObstacleTheta), -sin(ObstacleTheta), ObstaclePoseX; sin(ObstacleTheta), cos(ObstacleTheta), ObstaclePoseY; 0, 0, 1];
+%         ObstaclePose1 = [ObstaclePoseX;ObstaclePoseY];
+%         b = [ 0; ObstacleExtend_Y; 1];
+%         c = [ ObstacleExtend_X;0;1];
+%         d = [ ObstacleExtend_X;ObstacleExtend_Y; 1];
+%         ObstaclePose2 = T*b;  ObstaclePose2(3) = [];
+%         ObstaclePose3 = T*c;  ObstaclePose3(3) = [];
+%         ObstaclePose4 = T*d;  ObstaclePose4(3) = [];
+%     end
+%     
     
     if ~get(handles.ui_paraset, 'Visible')
         % parking time
@@ -448,93 +452,93 @@ while(~exit)
         %纵向加速度
         set(handles.Localax,'string',num2str(latest_A_record(2)/9.8,'%.2f'));
         
-        if ~isnan(RefPose1(1))
-            % Target parking position
-            VecObs = [ObstaclePose2(1) - ObstaclePose1(1), ObstaclePose2(2) - ObstaclePose1(2)];
-            Theta_Obs = atan2(VecObs(2), VecObs(1));
-            T_Obs = [cos(Theta_Obs), -sin(Theta_Obs), ObstaclePose1(1); ...
-                sin(Theta_Obs), cos(Theta_Obs), ObstaclePose1(2); 0, 0, 1];
-            Obs_fr = T_Obs * [p_width; 0; 1];
-            Obs_rr = T_Obs * [p_width; -p_width; 1];
-            Obs_fl = ObstaclePose1;
-            Obs_rl = ObstaclePose3;
-            VecRef = [RefPose2(1) - RefPose1(1), RefPose2(2) - RefPose1(2)];
-            Theta_Ref = atan2(VecRef(2), VecRef(1));
-            T_Ref = [cos(Theta_Ref), -sin(Theta_Ref), RefPose1(1); ...
-                sin(Theta_Ref), cos(Theta_Ref), RefPose1(2); 0, 0, 1];
-            Ref_rr = T_Ref * [p_width; 0; 1];
-            Ref_fr = T_Ref * [p_width; p_width; 1];
-            Ref_rl = RefPose1;
-            Ref_fl = RefPose3;
-            [p_fl, p_fr, p_rr, p_rl, p_length] = calpp(Ref_rl, Ref_rr, Obs_fl, Obs_fr, p_width);
-            set(handles.P_length,'string',num2str(p_length,'%.2f'));
-            PoseTheta = atan2(p_fl(2) - p_rl(2), p_fl(1) - p_rl(1));
-            
-            if myCount >= 0
-                %绘制算法目标车位  3
-                %             color = 'red';
-                %             linewidth = 0.5;
-                %             linestyle = '-';
-                %             PlotPolygon(handles, 3, p_fl, p_fr, p_rr, p_rl);
-                set(handles.Trajectory.UserData(3), 'XData', [p_fl(1) p_fr(1) NaN ...
-                    p_fr(1) p_rr(1) NaN p_rr(1) p_rl(1) NaN p_rl(1) p_fl(1)], ...
-                    'Ydata', [p_fl(2) p_fr(2) NaN p_fr(2) p_rr(2) NaN p_rr(2) p_rl(2) NaN ...
-                    p_rl(2) p_fl(2)]);
-                
-                %             plot([p_fl(1), p_fr(1)],[p_fl(2), p_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             hold on
-                %             plot([p_fr(1), p_rr(1)],[p_fr(2), p_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([p_rr(1), p_rl(1)],[p_rr(2), p_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([p_rl(1), p_fl(1)],[p_rl(2), p_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                
-                %绘制实际泊车空间  4
-                %             color = 'green';
-                %             linewidth = 0.5;
-                %             linestyle = '-';
-                %             PlotPolygon(handles, 4, Ref_rl, Ref_rr, Obs_fr, Obs_fl);
-                set(handles.Trajectory.UserData(4), 'XData', [Ref_rl(1) Ref_rr(1) NaN ...
-                    Ref_rr(1) Obs_fr(1) NaN Obs_fr(1) Obs_fl(1) NaN Obs_fl(1) Ref_rl(1)], ...
-                    'Ydata', [Ref_rl(2) Ref_rr(2) NaN Ref_rr(2) Obs_fr(2) NaN Obs_fr(2) Obs_fl(2) NaN ...
-                    Obs_fl(2) Ref_rl(2)]);
-                %             plot([Ref_rl(1), Ref_rr(1)],[Ref_rl(2), Ref_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([Ref_rr(1), Obs_fr(1)],[Ref_rr(2), Obs_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([Obs_fr(1), Obs_fl(1)],[Obs_fr(2), Obs_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([Obs_fl(1), Ref_rl(1)],[Obs_fl(2), Ref_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                
-                %绘制障碍物方块  5, 6
-                %             color = 'black';
-                %             linewidth = 0.5;
-                %             linestyle = '-';
-                %             PlotPolygon(handles, 5, Obs_fl, Obs_rl, Obs_rr, Obs_fr);
-                %             PlotPolygon(handles, 6, Ref_rl, Ref_fl, Ref_fr, Ref_rr);
-                
-                %             plot([Obs_fl(1),Obs_rl(1)],[Obs_fl(2),Obs_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([Obs_rl(1),Obs_rr(1)],[Obs_rl(2),Obs_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([Obs_rr(1),Obs_fr(1)],[Obs_rr(2),Obs_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([Ref_rl(1),Ref_fl(1)],[Ref_rl(2),Ref_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([Ref_fl(1),Ref_fr(1)],[Ref_fl(2),Ref_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                %             plot([Ref_fr(1),Ref_rr(1)],[Ref_fr(2),Ref_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
-                
-                %填充  1, 2
-                %             color = 'black';
-                %             linewidth = 0.5;
-                %             linestyle = '--';
-                %             facealpha = 0.5;
-                
-                %             fill([Obs_fl(1), Obs_fr(1), Obs_rr(1), Obs_rl(1)],[Obs_fl(2), Obs_fr(2), Obs_rr(2), Obs_rl(2)],...
-                %                 color,'FaceAlpha',facealpha);
-                %             fill([Ref_fl(1), Ref_fr(1), Ref_rr(1), Ref_rl(1)],[Ref_fl(2), Ref_fr(2), Ref_rr(2), Ref_rl(2)],...
-                %                 color,'FaceAlpha',facealpha);
-                %             set(handles.Trajectory,'XLim',tr_xlim,'YLim',tr_ylim);
-                set(handles.Trajectory.UserData(1), 'XData', [Obs_fl(1), Obs_fr(1), Obs_rr(1), Obs_rl(1)], ...
-                    'YData', [Obs_fl(2), Obs_fr(2), Obs_rr(2), Obs_rl(2)]);
-                set(handles.Trajectory.UserData(2), 'XData', [Ref_fl(1), Ref_fr(1), Ref_rr(1), Ref_rl(1)], ...
-                    'YData', [Ref_fl(2), Ref_fr(2), Ref_rr(2), Ref_rl(2)]);
-                
-                myCount = ~myCount;
-            end
-        end
-        
+%         if ~isnan(RefPose1(1))
+%             % Target parking position
+%             VecObs = [ObstaclePose2(1) - ObstaclePose1(1), ObstaclePose2(2) - ObstaclePose1(2)];
+%             Theta_Obs = atan2(VecObs(2), VecObs(1));
+%             T_Obs = [cos(Theta_Obs), -sin(Theta_Obs), ObstaclePose1(1); ...
+%                 sin(Theta_Obs), cos(Theta_Obs), ObstaclePose1(2); 0, 0, 1];
+%             Obs_fr = T_Obs * [p_width; 0; 1];
+%             Obs_rr = T_Obs * [p_width; -p_width; 1];
+%             Obs_fl = ObstaclePose1;
+%             Obs_rl = ObstaclePose3;
+%             VecRef = [RefPose2(1) - RefPose1(1), RefPose2(2) - RefPose1(2)];
+%             Theta_Ref = atan2(VecRef(2), VecRef(1));
+%             T_Ref = [cos(Theta_Ref), -sin(Theta_Ref), RefPose1(1); ...
+%                 sin(Theta_Ref), cos(Theta_Ref), RefPose1(2); 0, 0, 1];
+%             Ref_rr = T_Ref * [p_width; 0; 1];
+%             Ref_fr = T_Ref * [p_width; p_width; 1];
+%             Ref_rl = RefPose1;
+%             Ref_fl = RefPose3;
+%             [p_fl, p_fr, p_rr, p_rl, p_length] = calpp(Ref_rl, Ref_rr, Obs_fl, Obs_fr, p_width);
+%             set(handles.P_length,'string',num2str(p_length,'%.2f'));
+%             PoseTheta = atan2(p_fl(2) - p_rl(2), p_fl(1) - p_rl(1));
+%             
+%             if myCount >= 0
+%                 %绘制算法目标车位  3
+%                 %             color = 'red';
+%                 %             linewidth = 0.5;
+%                 %             linestyle = '-';
+%                 %             PlotPolygon(handles, 3, p_fl, p_fr, p_rr, p_rl);
+%                 set(handles.Trajectory.UserData(3), 'XData', [p_fl(1) p_fr(1) NaN ...
+%                     p_fr(1) p_rr(1) NaN p_rr(1) p_rl(1) NaN p_rl(1) p_fl(1)], ...
+%                     'Ydata', [p_fl(2) p_fr(2) NaN p_fr(2) p_rr(2) NaN p_rr(2) p_rl(2) NaN ...
+%                     p_rl(2) p_fl(2)]);
+%                 
+%                 %             plot([p_fl(1), p_fr(1)],[p_fl(2), p_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             hold on
+%                 %             plot([p_fr(1), p_rr(1)],[p_fr(2), p_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([p_rr(1), p_rl(1)],[p_rr(2), p_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([p_rl(1), p_fl(1)],[p_rl(2), p_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 
+%                 %绘制实际泊车空间  4
+%                 %             color = 'green';
+%                 %             linewidth = 0.5;
+%                 %             linestyle = '-';
+%                 %             PlotPolygon(handles, 4, Ref_rl, Ref_rr, Obs_fr, Obs_fl);
+%                 set(handles.Trajectory.UserData(4), 'XData', [Ref_rl(1) Ref_rr(1) NaN ...
+%                     Ref_rr(1) Obs_fr(1) NaN Obs_fr(1) Obs_fl(1) NaN Obs_fl(1) Ref_rl(1)], ...
+%                     'Ydata', [Ref_rl(2) Ref_rr(2) NaN Ref_rr(2) Obs_fr(2) NaN Obs_fr(2) Obs_fl(2) NaN ...
+%                     Obs_fl(2) Ref_rl(2)]);
+%                 %             plot([Ref_rl(1), Ref_rr(1)],[Ref_rl(2), Ref_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([Ref_rr(1), Obs_fr(1)],[Ref_rr(2), Obs_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([Obs_fr(1), Obs_fl(1)],[Obs_fr(2), Obs_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([Obs_fl(1), Ref_rl(1)],[Obs_fl(2), Ref_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 
+%                 %绘制障碍物方块  5, 6
+%                 %             color = 'black';
+%                 %             linewidth = 0.5;
+%                 %             linestyle = '-';
+%                 %             PlotPolygon(handles, 5, Obs_fl, Obs_rl, Obs_rr, Obs_fr);
+%                 %             PlotPolygon(handles, 6, Ref_rl, Ref_fl, Ref_fr, Ref_rr);
+%                 
+%                 %             plot([Obs_fl(1),Obs_rl(1)],[Obs_fl(2),Obs_rl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([Obs_rl(1),Obs_rr(1)],[Obs_rl(2),Obs_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([Obs_rr(1),Obs_fr(1)],[Obs_rr(2),Obs_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([Ref_rl(1),Ref_fl(1)],[Ref_rl(2),Ref_fl(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([Ref_fl(1),Ref_fr(1)],[Ref_fl(2),Ref_fr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 %             plot([Ref_fr(1),Ref_rr(1)],[Ref_fr(2),Ref_rr(2)],'Color',color,'LineWidth',linewidth,'LineStyle',linestyle);
+%                 
+%                 %填充  1, 2
+%                 %             color = 'black';
+%                 %             linewidth = 0.5;
+%                 %             linestyle = '--';
+%                 %             facealpha = 0.5;
+%                 
+%                 %             fill([Obs_fl(1), Obs_fr(1), Obs_rr(1), Obs_rl(1)],[Obs_fl(2), Obs_fr(2), Obs_rr(2), Obs_rl(2)],...
+%                 %                 color,'FaceAlpha',facealpha);
+%                 %             fill([Ref_fl(1), Ref_fr(1), Ref_rr(1), Ref_rl(1)],[Ref_fl(2), Ref_fr(2), Ref_rr(2), Ref_rl(2)],...
+%                 %                 color,'FaceAlpha',facealpha);
+%                 %             set(handles.Trajectory,'XLim',tr_xlim,'YLim',tr_ylim);
+%                 set(handles.Trajectory.UserData(1), 'XData', [Obs_fl(1), Obs_fr(1), Obs_rr(1), Obs_rl(1)], ...
+%                     'YData', [Obs_fl(2), Obs_fr(2), Obs_rr(2), Obs_rl(2)]);
+%                 set(handles.Trajectory.UserData(2), 'XData', [Ref_fl(1), Ref_fr(1), Ref_rr(1), Ref_rl(1)], ...
+%                     'YData', [Ref_fl(2), Ref_fr(2), Ref_rr(2), Ref_rl(2)]);
+%                 
+%                 myCount = ~myCount;
+%             end
+%         end
+%         
         if ~isnan(LocalX)
             %% 记录当前车辆位置
             %求从车身坐标系到全局坐标系的刚体变换矩阵
@@ -551,6 +555,7 @@ while(~exit)
             %             color = 'blue';
             %             linewidth = 0.5;
             %             linestyle = '-';
+            %% comment
             set(handles.Trajectory.UserData(7), 'XData', [V1G(1) V2G(1) NaN ...
                 V2G(1) V3G(1) NaN V3G(1) V4G(1) NaN ...
                 V4G(1) V5G(1) NaN V5G(1) V6G(1) NaN ...
@@ -573,41 +578,47 @@ while(~exit)
             %             set(handles.Trajectory,'XLim',tr_xlim,'YLim',tr_ylim);
             
         end
-        
-        if ~isnan(LocalX(1)) && ~isnan(RefPose1(1))
-            %求从全局坐标系到车位坐标系的刚体变换矩阵
-            % Translate
-            Tt = [1 0 -p_rl(1); 0 1 -p_rl(2); 0 0 1];
-            % Rotate
-            Tr = [cos(PoseTheta) sin(PoseTheta) 0; -sin(PoseTheta) cos(PoseTheta) 0; 0 0 1];
-            %求车辆质心在目标车位坐标系下的位置
-            V0 = [LocalX;LocalY;1];
-            V = Tt * Tr * V0; %V为车位坐标系下车辆质心位置，车位坐标系以障碍车外角点为原点
-            
-            %横向偏差
-            h = abs(V(2));
-            yError = h-0.8;  % positive -- outside
-            set(handles.yError,'string',num2str(yError,'%.2f'));
-            
-            %纵向偏差
-            x_= (p_length - 3.57)/2 + 0.544; %标准纵向位置
-            xError = V(1) - x_;      % positive -- close to the reference
-            set(handles.xError,'string',num2str(xError,'%.2f'));
-            
-            %航向角偏差
-            HeadingAngleError = rad2deg(Yaw-PoseTheta);  % positive -- counterclockwise
-            set(handles.HeadingAngleError,'string',num2str(HeadingAngleError,'%.2f'));
-            
-            if ~stop && init_flag
-                Pos_Car=[LocalX;LocalY;Yaw];
-                %             rfp1=[RefPose1(1);RefPose1(2)]; rfp2=[RefPose2(1); RefPose2(2)];
-                %             obp1=[ObstaclePose1(1);ObstaclePose1(2)]; obp2=[ObstaclePose2(1);ObstaclePose2(2)];
-                risk_score = risk_score + Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle);
-            end
-        end
+%         if ~stop && init_flag
+%             if ~isnan(LocalX(1)) && ~isnan(RefPose1(1))
+%                 %求从全局坐标系到车位坐标系的刚体变换矩阵
+%                 % Translate
+%                 Tt = [1 0 -p_rl(1); 0 1 -p_rl(2); 0 0 1];
+%                 % Rotate
+%                 Tr = [cos(PoseTheta) sin(PoseTheta) 0; -sin(PoseTheta) cos(PoseTheta) 0; 0 0 1];
+%                 %求车辆质心在目标车位坐标系下的位置
+%                 V0 = [LocalX;LocalY;1];
+%                 V = Tt * Tr * V0; %V为车位坐标系下车辆质心位置，车位坐标系以障碍车外角点为原点
+%                 
+%                 %横向偏差
+%                 h = abs(V(2));
+%                 yError = h-0.8;  % positive -- outside
+%                 set(handles.yError,'string',num2str(yError,'%.2f'));
+%                 
+%                 %纵向偏差
+%                 x_= (p_length - 3.57)/2 + 0.544; %标准纵向位置
+%                 xError = V(1) - x_;      % positive -- close to the reference
+%                 set(handles.xError,'string',num2str(xError,'%.2f'));
+%                 
+%                 %航向角偏差
+%                 HeadingAngleError = rad2deg(Yaw-PoseTheta);  % positive -- counterclockwise
+%                 set(handles.HeadingAngleError,'string',num2str(HeadingAngleError,'%.2f'));
+%                 
+%                 
+%                 Pos_Car=[LocalX;LocalY;Yaw];
+%                 %             rfp1=[RefPose1(1);RefPose1(2)]; rfp2=[RefPose2(1); RefPose2(2)];
+%                 %             obp1=[ObstaclePose1(1);ObstaclePose1(2)]; obp2=[ObstaclePose2(1);ObstaclePose2(2)];
+%                 [scoreAdd, dangerDistance] = Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle);
+%                 risk_score = risk_score + scoreAdd;
+%                 if dangerDistance < 0
+%                     set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'ForegroundColor', 'r');
+%                 else
+%                     set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'ForegroundColor', 'k');
+%                 end
+%             end
+%         end
         drawnow limitrate;
     end
-    toc
+%     toc
 end
 
 
@@ -639,7 +650,9 @@ global tr_xlim
 global tr_ylim
 global p_width
 global displaymethod
+global machine
 
+machine = get(handles.St_Robot, 'Value');
 set([handles.ui_paraset, handles.push_show], 'Visible', 0);
 set([handles.ui_show, handles.ui_tr, handles.ui_msg], 'Visible', 1);
 xmin = str2num(get(handles.set_xmin,'String'));
@@ -1447,3 +1460,12 @@ function St_en_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of St_en
+
+
+% --- Executes on button press in distance.
+function distance_Callback(hObject, eventdata, handles)
+% hObject    handle to distance (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of distance
