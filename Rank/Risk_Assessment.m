@@ -25,7 +25,7 @@
 
 %Is_High_Risk = RiskAssess(Cord_ObsF1,Cord_ObsF2,Cord_ObsR1,Cord_ObsR2,Pos_Car,Vehicle);
 
-function Is_High_Risk = Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle)
+function [Is_High_Risk, distoobs] = Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle)
 % function Is_High_Risk = RiskAssess(Cord_ObsF1,Cord_ObsF2,Cord_ObsR1,Cord_ObsR2,Pos_Car,Vehicle)
 %**********************************************************************************************
 %判断车辆是否存在与前后障碍车碰撞的风险

@@ -19,7 +19,7 @@ for counter = 1 : size(VehicleSpeed, 1)
     if isempty(row) || VehicleSpeed(counter, 1) == oldTime
         continue
     end
-    oldTime = VehicleSpedd(counter, 1);
+    oldTime = VehicleSpeed(counter, 1);
     angleChange = max(angle(max(row(1), 1): min(row(end), rowEnd), 2)) - ...
         min(angle(max(row(1), 1): min(row(end), rowEnd), 2)); 
     % count the rot times

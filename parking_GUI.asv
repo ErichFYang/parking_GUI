@@ -373,9 +373,8 @@ while(~exit)
     pause(0.02);
     
 %     [latest_speed_record, VehicleSpeed_indice, ~] = getmsg(VehicleSpeed, VehicleSpeed_indice, handles);
-    latest_speed_record = sqrt(vehicleSpeedSub.LatestMessage.Twist.Linear.X^2 + vehicleSpeedSub.LatestMessage.Twist.Linear.Y^2);
-    pause(0.02);
-    
+%     latest_speed_record = sqrt(vehicleSpeedSub.LatestMessage.Twist.Linear.X^2 + vehicleSpeedSub.LatestMessage.Twist.Linear.Y^2);
+
 %     [latest_vehiclePose_record, vehiclePose_indice, updateVehiclePose] = getmsg(vehiclePose, vehiclePose_indice, handles);
 %     LocalX = latest_vehiclePose_record(2); LocalY = latest_vehiclePose_record(3);
 %     Yaw = latest_vehiclePose_record(4);
@@ -444,7 +443,7 @@ while(~exit)
         %方向盘转角
         set(handles.angle,'string',num2str(latest_angle_record,'%.2f'));
         %车速
-        set(handles.VehicleSpeed,'string',num2str(latest_speed_record*3.6,'%.2f'));
+%         set(handles.VehicleSpeed,'string',num2str(latest_speed_record*3.6,'%.2f'));
         %横向加速度
         set(handles.Localay,'string',num2str(latest_A_record(2)/9.8,'%.2f'));
         %纵向加速度
@@ -472,7 +471,7 @@ while(~exit)
             set(handles.P_length,'string',num2str(p_length,'%.2f'));
             PoseTheta = atan2(p_fl(2) - p_rl(2), p_fl(1) - p_rl(1));
             
-            if myCount == 0
+            if myCount >= 0
                 %绘制算法目标车位  3
                 %             color = 'red';
                 %             linewidth = 0.5;
