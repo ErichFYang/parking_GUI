@@ -1,71 +1,143 @@
-%碰撞风险Risk：泊车过程中车辆与障碍车距离小于10cm的总时长
-% Vehicle??
-
-%整车参数：
-%vehicle_width = 1.551; %车宽
-%vehicle_length = 3.569; %车长
-%rear_overhang = 0.544; %后悬
-%front_overhang = 0.72; %前悬
-%wheel_base = 2.305;%轴距
-%front_wheel_track = 1.324;%前轮距
-%rear_wheel_track = 1.292;%后轮距
-%front_vehicle_width = 0.791; %对应八边形f边
-%rear_vehicle_width = 0.821; %对应八边形c边
-
-%Vehicle.Wf = front_vehicle_width;
-%Vehicle.Wr = rear_vehicle_width;
-%Vehicle.Lf = front_overhang + wheel_base;
-%Vehicle.Lr = rear_overhang;
-
-%Cord_ObsF1 = [0;0];
-%Cord_ObsF2 = [0;-5];
-%Cord_ObsR1 = [-5;0];
-%Cord_ObsR2 = [-5;-5];
-%Pos_Car = [-3;-2.5;pi/9];
-
-%Is_High_Risk = RiskAssess(Cord_ObsF1,Cord_ObsF2,Cord_ObsR1,Cord_ObsR2,Pos_Car,Vehicle);
-
-function [Is_High_Risk, distoobs] = Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle)
-% function Is_High_Risk = RiskAssess(Cord_ObsF1,Cord_ObsF2,Cord_ObsR1,Cord_ObsR2,Pos_Car,Vehicle)
+function [isHighRisk, minDistance, collisionFlag] = Risk_Assessment(refPose, obstaclePose, carPose)
+% function [Is_High_Risk, distoobs] = Risk_Assessment(refPose, obstaclePose, carPose)
 %**********************************************************************************************
 %判断车辆是否存在与前后障碍车碰撞的风险
 %与障碍车距离<0.1m时，Is_High_Risk = true
 %长度单位统一为m 角度单位统一为rad
-%Cord_ObsF1：前障碍车外侧角点坐标[x;y]
-%Cord_ObsF2：前障碍车内侧角点坐标[x;y]
-%Cord_ObsR1：后障碍车外侧角点坐标[x;y]
-%Cord_ObsR2：后障碍车内侧角点坐标[x;y]
-%Pos_Car：车辆位姿[x;y;theta];
+%refPose和obstaclePose内坐标排序按点2,1,3的顺序排布(内，角，外)
+%carPose内坐标排序按点1~8顺序排布(从左前顺时针环绕，最终回到左后视镜)
 % *********************************************************************************************
-Is_High_Risk = false;
+% 输出量初始化
+isHighRisk = 1;
+minDistance = NaN;
+collisionFlag = 0;
+DisFun = @(a,b) cross(a,b)./norm(b);
+% 输入量转换成三维坐标
+refPose(3, :) = 0;
+obstaclePose(3, :) = 0;
+carPose(3, :) = 0;
 
-Vec_Obs_F = RefPose1 - RefPose2; %前障碍车角点连线向量
-Vec_Obs_R = ObstaclePose2 - ObstaclePose1; %后障碍车角点连线向量
-len_Vec_Obs_F = norm(Vec_Obs_F);
-len_Vec_Obs_R = norm(Vec_Obs_R);
-%车辆八边形点1 2 5 6的坐标
-Point1 = [Vehicle.Lf; Vehicle.Wf/2; 0];
-Point2 = [Vehicle.Lf; -Vehicle.Wf/2; 0];
-Point5 = [-Vehicle.Lr; -Vehicle.Wr/2; 0];
-Point6 = [-Vehicle.Lr; Vehicle.Wr/2; 0];
-dcm = angle2dcm(-Pos_Car(3),0,0);
-Point1 = dcm*Point1 + Pos_Car;
-Point2 = dcm*Point2 + Pos_Car; 
-Point5 = dcm*Point5 + Pos_Car;
-Point6 = dcm*Point6 + Pos_Car;
-%求车辆八边形点1、2到前障碍车的距离
-dis1toObsF = cross([Vec_Obs_F;0],[Point1(1:2)-RefPose2;0]);
-dis2toObsF = cross([Vec_Obs_F;0],[Point2(1:2)-RefPose2;0]);
-%得到点1、2中距离前障碍车最危险的值
-%这里采用叉乘求点到前障碍车的距离，>0在库位内，<0发生碰撞,注意向量方向的选取
-distoF = min(dis1toObsF(3),dis2toObsF(3));
-%求车辆八边形点5、6到后障碍车的距离
-dis5toObsR = cross([Vec_Obs_R;0],[Point5(1:2)-ObstaclePose1;0]);
-dis6toObsR = cross([Vec_Obs_R;0],[Point6(1:2)-ObstaclePose1;0]);
-distoR = min(dis5toObsR(3),dis6toObsR(3));
-%求车辆到障碍车的最小距离
-distoobs = min(distoF/len_Vec_Obs_F,distoR/len_Vec_Obs_R);
-if distoobs < 0.1
-    Is_High_Risk = 1;
+%% 检测碰撞
+% 计算车辆角点到障碍物边线(直线)的距离
+disCar2Ref = NaN .* ones(3, 16);
+disCar2Obs = NaN .* ones(3, 16);
+
+vecRefPose = diff(refPose, 1, 2);  
+auxVecRef2Car = carPose - refPose(:,2);
+disCar2Ref(:, 1:8) = bsxfun(DisFun, auxVecRef2Car, vecRefPose(:,1));
+disCar2Ref(:, 9:16) = bsxfun(DisFun, auxVecRef2Car, vecRefPose(:,2));
+
+vecObstaclePose = diff(obstaclePose, 1, 2);
+auxVecObs2Car = carPose - obstaclePose(:,2);
+disCar2Obs(:, 1:8) = bsxfun(DisFun, auxVecObs2Car, vecObstaclePose(:,1));
+disCar2Obs(:, 9:16) = bsxfun(DisFun, auxVecObs2Car, vecObstaclePose(:,2));
+
+% 计算障碍物角点到车子边线(直线)的距离
+disRef2Car = NaN .* ones(3, 8);
+disObs2Car = NaN .* ones(3, 8);
+vecCarPose = diff([carPose carPose(:,1)], 1, 2);
+
+for num = 2 : 2 : 8
+    auxVecRef2Car = carPose(:, num) - refPose(:,2);
+    disRef2Car(:, num-1 : num) = bsxfun(DisFun, auxVecRef2Car, vecCarPose(:, num-1 : num));
+    
+    auxVecObs2Car = carPose(:, num) - obstaclePose(:,2);
+    disObs2Car(:, num-1 : num) = bsxfun(DisFun, auxVecObs2Car, vecCarPose(:, num-1 : num));
+end
+
+% 判断Ref的角点和Obs的角点是否在车辆内部
+if sum(disRef2Car(3,:) <= 0) == 8
+    collisionFlag = 1;  %和前车发生碰撞
+    return;
+elseif sum(disObs2Car(3,:) <=0) == 8
+    collisionFlag = 2;  %和后车发生碰撞
+    return;
+else
+    for num = 1 : 8
+        judgeRef = disCar2Ref(:,[num 8+num]);
+        judgeObs = disCar2Obs(:,[num 8+num]);
+        if sum(judgeRef(3,:) >=0) == 2
+            collisionFlag = 1;  %和前车发生碰撞
+            return;
+        elseif sum(judgeObs(3,:) <=0) ==2
+            collisionFlag = 2;  %和后车发生碰撞
+            return;
+        end
+    end
+end
+%% 计算最小距离
+% 计算车辆角点到障碍物边线(线段)的距离
+disCar2Ref(1:2,:)=[];
+for num2P = 1 : 2
+    for num = 1 : 8
+        auxVecRef2Car = carPose(:, num) - refPose(:, num2P);
+        k = dot(auxVecRef2Car, vecRefPose(:, num2P)) / norm(vecRefPose(:, num2P))^2;
+        k1 = k > 1;
+        k2 = k < 0;
+        k3 = ~(k1||k2);
+        numSave = num + 8*(num2P-1);
+        disCar2Ref(k1, numSave) = norm(carPose(:, num) - refPose(:, num2P + 1));
+        disCar2Ref(k2, numSave) = norm(auxVecRef2Car);
+        disCar2Ref(k3, numSave) = abs(disCar2Ref(numSave));
+    end
+end
+
+disCar2Obs(1:2,:)=[];
+for num2P = 1 : 2
+    for num = 1 : 8
+        auxVecObs2Car = carPose(:, num) - obstaclePose(:, num2P);
+        k = dot(auxVecObs2Car, vecObstaclePose(:, num2P)) / norm(vecObstaclePose(:, num2P))^2;
+        k1 = k > 1;
+        k2 = k < 0;
+        k3 = ~(k1||k2);
+        numSave = num + 8*(num2P-1);
+        disCar2Obs(k1, numSave) = norm(carPose(:, num) - obstaclePose(:, num2P + 1));
+        disCar2Obs(k2, numSave) = norm(auxVecRef2Car);
+        disCar2Obs(k3, numSave) = abs(disCar2Ref(numSave));
+    end
+end
+% 计算障碍物角点到车子边线(线段)的距离
+carPose = [carPose, carPose(:,1)];
+disRef2Car = NaN .* ones(1, 24);
+for num8P = 1 : 8
+    for num = 1 : 3
+        auxVecCar2Ref = refPose(:, num) - carPose(:, num8P);
+        k = dot(auxVecCar2Ref, vecCarPose(:, num8P)) / norm(vecCarPose(:, num8P))^2;
+        k1 = k > 1;
+        k2 = k < 0;
+        k3 = ~(k1||k2);
+        numSave = num + 3*(num8P-1);
+        disRef2Car(k1, numSave) = norm(refPose(:, num) - carPose(:, num8P + 1));
+        disRef2Car(k2, numSave) = norm(auxVecCar2Ref);
+        if k3
+            tmpDis = DisFun(auxVecCar2Ref, vecCarPose(:, num8P));
+            disRef2Car(k3, numSave) = abs(tmpDis(3));
+        end
+    end
+end
+disObs2Car = NaN .* ones(1, 24);
+for num8P = 1 : 8
+    for num = 1 : 3
+        auxVecCar2Obs = obstaclePose(:, num) - carPose(:, num8P);
+        k = dot(auxVecCar2Obs, vecCarPose(:, num8P)) / norm(vecCarPose(:, num8P))^2;
+        k1 = k > 1;
+        k2 = k < 0;
+        k3 = ~(k1||k2);
+        numSave = num + 3*(num8P-1);
+        disObs2Car(k1, numSave) = norm(obstaclePose(:, num) - carPose(:, num8P + 1));
+        disObs2Car(k2, numSave) = norm(auxVecCar2Obs);
+        if k3
+            tmpDis = DisFun(auxVecCar2Obs, vecCarPose(:, num8P));
+            disObs2Car(k3, numSave) = abs(tmpDis(3));
+        end
+    end
+end
+
+% 选出最小距离
+minDistance = min([disCar2Obs, disCar2Ref, ...
+    disRef2Car, disObs2Car]);
+
+if minDistance > 0.1
+    isHighRisk = 0;
 end
 end

@@ -1,4 +1,3 @@
-
 function varargout = parking_GUI(varargin)
 % PARKING_GUI MATLAB code for parking_GUI.fig 
 %      PARKING_GUI, by itself, creates a new PARKING_GUI or raises the existing
@@ -115,7 +114,8 @@ stop = 1;
 exit = 0;  
 last_Ref = zeros(2,20);
 init_flag = 0;
-parkingtime = 0;
+parkingtime = 0; %泊车时间
+minDis = 100;  %最小安全距离
 
 %整车参数
 vehicle_width = 1.551; %车宽
@@ -175,15 +175,15 @@ mytimer = tic;
 %% main loop
 while(~exit)
 %     tic
-    try
-        if (gearSub.LatestMessage.Value ~= 8 && stop == 1 && ~machine) || ...
-                (gearSub.LatestMessage.Value == 8 && stop == 0 && ~machine) || ...
-                (enableSub.LatestMessage.Value == 1 && stop == 1 && machine) || ...
-                (enableSub.LatestMessage.Value == 0 && stop == 0 && machine)
-            StartStop(handles);
-        end
-    catch ME         
-    end
+%     try
+%         if (gearSub.LatestMessage.Value ~= 8 && stop == 1 && ~machine) || ...
+%                 (gearSub.LatestMessage.Value == 8 && stop == 0 && ~machine) || ...
+%                 (enableSub.LatestMessage.Value == 1 && stop == 1 && machine) || ...
+%                 (enableSub.LatestMessage.Value == 0 && stop == 0 && machine)
+%             StartStop(handles);
+%         end
+%     catch ME         
+%     end
         
     pause(0.05);
     %% when the parking process starts
@@ -236,10 +236,10 @@ while(~exit)
             % judge: did the car drive into the parking lot? (1-no, 0-yes)
             standardLine = Ref_rl - Obs_fl;
             standardLine(3) = 0;
-            lineGroup = last_Ref(:,13:20) - Obs_fl;
+            lineGroup = last_Ref(:,13:18) - Obs_fl;
             lineGroup(3,:) = 0;
-            judgeMatrix = zeros(3, 8);
-            for number = 1 : 8
+            judgeMatrix = zeros(3, 6);
+            for number = 1 : 6
                 judgeMatrix(:, number) = cross(standardLine, lineGroup(:,number)) > 0;
             end
             if sum(judgeMatrix(3,:)) == 0
@@ -265,8 +265,12 @@ while(~exit)
                 rot_score = rot_Assessment(get_above(VehicleSpeed, recordnum(2)),get_above(angle, recordnum(1)));
                 fprintf('rot_score =%d\n', rot_score);
                 
-                %计算泊车评分
+                %计算碰撞风险评分
+                if isnan(minDis)
+                    risk = 0;
+                else
                 risk=Risk(risk_score, recordnum(4));
+                end
                 fprintf('risk_score =%d\n', risk);
                 % score = [weight of every element; score of every element; percent of every element]
                 score = eva(Time_score,acc_score,risk,com_score,rot_score);
@@ -276,7 +280,7 @@ while(~exit)
                 set(handles.safetyScore, 'String', [num2str(score(3,2), '%.2f'), '/', num2str(10*score(3,1),'%.2f'), '            ', num2str(round(100 * score(3,4)), '%d'), '%']);
                 set(handles.comScore, 'String', [num2str(score(4,2), '%.2f'), '/', num2str(10*score(4,1),'%.2f'), '            ', num2str(round(100 * score(4,4)), '%d'), '%']);
                 set(handles.rotScore, 'String', [num2str(score(5,2), '%.2f'), '/', num2str(10*score(5,1),'%.2f'), '            ', num2str(round(100 * score(5,4)), '%d'), '%']);
-                
+                set(handles.distance, 'String', ['本次泊车过程中与障碍物的最小距离为：' num2str(minDis,'%.2f') 'm'], 'Fontsize', 13, 'ForegroundColor', 'r');
                 try
                     scoreList = readtable(['DataSave/成绩记录' datestr(now, 'yymmdd')]);
                 catch ME
@@ -365,15 +369,31 @@ while(~exit)
     end
     
 %     [latest_angle_record, angle_indice, ~] = getmsg(angle, angle_indice, handles);
-    latest_angle_record = angleSub.LatestMessage.Angle;
+    latest_angle_record = angleSub.LatestMessage;
+    if isempty(latest_angle_record)
+        latest_angle_record = NaN;
+    else
+        latest_angle_record = latest_angle_record.Angle;
+    end
     pause(0.02);
     
 %     [latest_A_record, LocalA_indice, ~] = getmsg(LocalA, LocalA_indice, handles);
-    latest_A_record = [localASub.LatestMessage.LinearAcceleration.X; localASub.LatestMessage.LinearAcceleration.Y];
+    latest_A_record = localASub.LatestMessage;
+    if isempty(latest_A_record)
+        latest_A_record = [NaN; NaN];
+    else
+        latest_A_record = [latest_A_record.LinearAcceleration.X; latest_A_record.LinearAcceleration.Y];
+    end
     pause(0.02);
     
-%     [latest_speed_record, VehicleSpeed_indice, ~] = getmsg(VehicleSpeed, VehicleSpeed_indice, handles);
-    latest_speed_record = sqrt(vehicleSpeedSub.LatestMessage.Twist.Linear.X^2 + vehicleSpeedSub.LatestMessage.Twist.Linear.Y^2);
+    
+%     [latest_speed_record, VehicleSpeed_indice, ~] = getmsg(VehicleSpeed, VehicleSpeed_indice, handles);    
+    latest_speed_record = vehicleSpeedSub.LatestMessage;
+    if isempty(latest_speed_record)
+        latest_speed_record = NaN;
+    else
+        latest_speed_record = sqrt(latest_speed_record.Twist.Linear.X^2 + latest_speed_record.Twist.Linear.Y^2);
+    end
     pause(0.02);
     
 %     [latest_vehiclePose_record, vehiclePose_indice, updateVehiclePose] = getmsg(vehiclePose, vehiclePose_indice, handles);
@@ -416,10 +436,11 @@ while(~exit)
         RefPose1 = [RefPoseX;RefPoseY];
         b = [ 0; RefExtend_Y; 1];
         c = [ RefExtend_X;0;1];
-        d = [ RefExtend_X;RefExtend_Y; 1];
+%         d = [ RefExtend_X;RefExtend_Y; 1];
         RefPose2 = T*b;  RefPose2(3) = [];
         RefPose3 = T*c;  RefPose3(3) = [];
-        RefPose4 = T*d;  RefPose4(3) = [];
+%         RefPose4 = T*d;  RefPose4(3) = [];
+        refPose = [RefPose2, RefPose1, RefPose3];
         
         ObstaclePoseX = latest_parkingSlot_record.ObstaclePose.X;
         ObstaclePoseY = latest_parkingSlot_record.ObstaclePose.Y;
@@ -430,10 +451,11 @@ while(~exit)
         ObstaclePose1 = [ObstaclePoseX;ObstaclePoseY];
         b = [ 0; ObstacleExtend_Y; 1];
         c = [ ObstacleExtend_X;0;1];
-        d = [ ObstacleExtend_X;ObstacleExtend_Y; 1];
+%         d = [ ObstacleExtend_X;ObstacleExtend_Y; 1];
         ObstaclePose2 = T*b;  ObstaclePose2(3) = [];
         ObstaclePose3 = T*c;  ObstaclePose3(3) = [];
-        ObstaclePose4 = T*d;  ObstaclePose4(3) = [];
+%         ObstaclePose4 = T*d;  ObstaclePose4(3) = [];
+        obstaclePose = [ObstaclePose2, ObstaclePose1, ObstaclePose3];
     end
     
     
@@ -548,6 +570,8 @@ while(~exit)
             %求车辆八角点在全局坐标系下的位置
             V1G = T*V1L; V2G = T*V2L; V3G = T*V3L; V4G = T*V4L;
             V5G = T*V5L; V6G = T*V6L; V7G = T*V7L; V8G = T*V8L;
+            carPose = [V1G(1:2), V2G(1:2), V3G(1:2), V4G(1:2), ...
+                V5G(1:2), V6G(1:2), V7G(1:2), V8G(1:2)];
             
             %绘制车辆模型，以长方形框表示实时位置 7
             %             color = 'blue';
@@ -603,15 +627,26 @@ while(~exit)
                 set(handles.HeadingAngleError,'string',num2str(HeadingAngleError,'%.2f'));
                 
                 
-                Pos_Car=[LocalX;LocalY;Yaw];
+
                 %             rfp1=[RefPose1(1);RefPose1(2)]; rfp2=[RefPose2(1); RefPose2(2)];
                 %             obp1=[ObstaclePose1(1);ObstaclePose1(2)]; obp2=[ObstaclePose2(1);ObstaclePose2(2)];
-                [scoreAdd, dangerDistance] = Risk_Assessment(RefPose1,RefPose2,ObstaclePose1,ObstaclePose2,Pos_Car,Vehicle);
+                [scoreAdd, dangerDistance, collisionFlag] = Risk_Assessment(refPose, obstaclePose, carPose);
+                if dangerDistance < minDis && ~isnan(minDis)
+                    minDis = dangerDistance;
+                end
                 risk_score = risk_score + scoreAdd;
-                if dangerDistance < 0
-                    set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'ForegroundColor', 'r');
+                if collisionFlag == 1
+                    set(handles.distance, 'String', '与前障碍物碰撞', 'ForegroundColor', 'r');
+                    minDis = NaN;
+                elseif collisionFlag == 2
+                    set(handles.distance, 'String', '与后障碍物碰撞', 'ForegroundColor', 'r');
+                    minDis = NaN;
                 else
-                    set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'ForegroundColor', 'k');
+                    if scoreAdd == 1
+                        set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'ForegroundColor', 'r');
+                    else
+                        set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'ForegroundColor', 'k');
+                    end
                 end
             end
         end
