@@ -175,15 +175,15 @@ mytimer = tic;
 %% main loop
 while(~exit)
 %     tic
-%     try
-%         if (gearSub.LatestMessage.Value ~= 8 && stop == 1 && ~machine) || ...
-%                 (gearSub.LatestMessage.Value == 8 && stop == 0 && ~machine) || ...
-%                 (enableSub.LatestMessage.Value == 1 && stop == 1 && machine) || ...
-%                 (enableSub.LatestMessage.Value == 0 && stop == 0 && machine)
-%             StartStop(handles);
-%         end
-%     catch ME         
-%     end
+    try
+        if (gearSub.LatestMessage.Value ~= 8 && stop == 1 && ~machine) || ...
+                (gearSub.LatestMessage.Value == 8 && stop == 0 && ~machine) || ...
+                (enableSub.LatestMessage.Value == 1 && stop == 1 && machine) || ...
+                (enableSub.LatestMessage.Value == 0 && stop == 0 && machine)
+            StartStop(handles);
+        end
+    catch ME         
+    end
         
     pause(0.05);
     %% when the parking process starts
@@ -269,7 +269,8 @@ while(~exit)
                 if isnan(minDis)
                     risk = 0;
                 else
-                risk=Risk(risk_score, recordnum(4));
+                    set(handles.distance, 'String', ['本次泊车过程中与障碍物的最小距离为：' num2str(minDis,'%.2f') 'm'], 'Fontsize', 13, 'ForegroundColor', 'r');
+                    risk=Risk(risk_score, recordnum(4));
                 end
                 fprintf('risk_score =%d\n', risk);
                 % score = [weight of every element; score of every element; percent of every element]
@@ -280,7 +281,7 @@ while(~exit)
                 set(handles.safetyScore, 'String', [num2str(score(3,2), '%.2f'), '/', num2str(10*score(3,1),'%.2f'), '            ', num2str(round(100 * score(3,4)), '%d'), '%']);
                 set(handles.comScore, 'String', [num2str(score(4,2), '%.2f'), '/', num2str(10*score(4,1),'%.2f'), '            ', num2str(round(100 * score(4,4)), '%d'), '%']);
                 set(handles.rotScore, 'String', [num2str(score(5,2), '%.2f'), '/', num2str(10*score(5,1),'%.2f'), '            ', num2str(round(100 * score(5,4)), '%d'), '%']);
-                set(handles.distance, 'String', ['本次泊车过程中与障碍物的最小距离为：' num2str(minDis,'%.2f') 'm'], 'Fontsize', 13, 'ForegroundColor', 'r');
+    
                 try
                     scoreList = readtable(['DataSave/成绩记录' datestr(now, 'yymmdd')]);
                 catch ME
@@ -494,7 +495,7 @@ while(~exit)
             set(handles.P_length,'string',num2str(p_length,'%.2f'));
             PoseTheta = atan2(p_fl(2) - p_rl(2), p_fl(1) - p_rl(1));
             
-            if myCount == 0
+            if myCount >= 0
                 %绘制算法目标车位  3
                 %             color = 'red';
                 %             linewidth = 0.5;
@@ -604,13 +605,14 @@ while(~exit)
         if ~stop && init_flag
             if ~isnan(LocalX(1)) && ~isnan(RefPose1(1))
                 %求从全局坐标系到车位坐标系的刚体变换矩阵
-                % Translate
-                Tt = [1 0 -p_rl(1); 0 1 -p_rl(2); 0 0 1];
-                % Rotate
-                Tr = [cos(PoseTheta) sin(PoseTheta) 0; -sin(PoseTheta) cos(PoseTheta) 0; 0 0 1];
+%                 % Translate
+%                 Tt = [1 0 -p_rl(1); 0 1 -p_rl(2); 0 0 1];
+%                 % Rotate
+%                 Tr = [cos(PoseTheta) sin(PoseTheta) 0; -sin(PoseTheta) cos(PoseTheta) 0; 0 0 1];
                 %求车辆质心在目标车位坐标系下的位置
                 V0 = [LocalX;LocalY;1];
-                V = Tt * Tr * V0; %V为车位坐标系下车辆质心位置，车位坐标系以障碍车外角点为原点
+                T0_rl = [cos(PoseTheta) -sin(PoseTheta) p_rl(1); sin(PoseTheta) cos(PoseTheta) p_rl(2); 0 0 1];
+                V = inv(T0_rl)*V0; %V为车位坐标系下车辆质心位置，车位坐标系以障碍车外角点为原点
                 
                 %横向偏差
                 h = abs(V(2));
@@ -636,16 +638,16 @@ while(~exit)
                 end
                 risk_score = risk_score + scoreAdd;
                 if collisionFlag == 1
-                    set(handles.distance, 'String', '与前障碍物碰撞', 'ForegroundColor', 'r');
+                    set(handles.distance, 'String', '与前障碍物碰撞', 'Fontsize', 16, 'ForegroundColor', 'r');
                     minDis = NaN;
                 elseif collisionFlag == 2
-                    set(handles.distance, 'String', '与后障碍物碰撞', 'ForegroundColor', 'r');
+                    set(handles.distance, 'String', '与后障碍物碰撞', 'Fontsize', 16, 'ForegroundColor', 'r');
                     minDis = NaN;
                 else
                     if scoreAdd == 1
-                        set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'ForegroundColor', 'r');
+                        set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'Fontsize', 16, 'ForegroundColor', 'r');
                     else
-                        set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'ForegroundColor', 'k');
+                        set(handles.distance, 'String', [num2str(dangerDistance, '%.2f'), ' m'], 'Fontsize', 16, 'ForegroundColor', 'k');
                     end
                 end
             end
@@ -711,7 +713,9 @@ global h_tr;
 global flag_show;
 global flag_pk;
 global last_Ref;
+global machine;
 
+machine = 1;
 stop = 1;
 flag_loop2 = 0;
 h_tr = 0;
@@ -1398,45 +1402,45 @@ function figure1_WindowKeyPressFcn(hObject, eventdata, handles)
 %	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
 % handles    structure with handles and user data (see GUIDATA)
 
-try
-    myKey = double(get(gcf,'CurrentCharacter'));
-catch 
-end
+% try
+%     myKey = double(get(gcf,'CurrentCharacter'));
+% catch 
+% end
 
-if ~isempty(myKey)
-    switch myKey
-        case 13   % enter
-            if get(handles.ui_show,'Visible')
-                StartStop(handles);
-            end
-        case 27   % esc
-            ExitGUI(handles);
-        case 98   % 'b'
-            if get(handles.ui_paraset,'Visible')
-                set(handles.St_Robot, 'Value', ~handles.St_Robot.Value);
-                set(handles.set_name, 'String', '机器');
-            end
-        case 100  % 'd'
-            if get(handles.ui_paraset,'Visible')
-                set(handles.St_save, 'Value', ~handles.St_save.Value);
-            end
-        case 113  % 'q'
-            set(handles.ui_Debug, 'Visible', ~handles.ui_Debug.Visible);
-        case 114  % 'r'
-            if get(handles.ui_show,'Visible')
-                ResetGUI(handles);
-            end
-        case 115  % 's'
-            if get(handles.ui_paraset,'Visible')
-                SetGUI(handles);
-            end
-        case 116 % 't'
-            if get(handles.ui_show,'Visible')
-                ShowTrajectory(handles);
-            end
-        otherwise
-    end
-end
+% if ~isempty(myKey)
+%     switch myKey
+%         case 13   % enter
+%             if get(handles.ui_show,'Visible')
+%                 StartStop(handles);
+%             end
+%         case 27   % esc
+%             ExitGUI(handles);
+%         case 98   % 'b'
+%             if get(handles.ui_paraset,'Visible')
+%                 set(handles.St_Robot, 'Value', ~handles.St_Robot.Value);
+%                 set(handles.set_name, 'String', '机器');
+%             end
+%         case 100  % 'd'
+%             if get(handles.ui_paraset,'Visible')
+%                 set(handles.St_save, 'Value', ~handles.St_save.Value);
+%             end
+%         case 113  % 'q'
+%             set(handles.ui_Debug, 'Visible', ~handles.ui_Debug.Visible);
+%         case 114  % 'r'
+%             if get(handles.ui_show,'Visible')
+%                 ResetGUI(handles);
+%             end
+%         case 115  % 's'
+%             if get(handles.ui_paraset,'Visible')
+%                 SetGUI(handles);
+%             end
+%         case 116 % 't'
+%             if get(handles.ui_show,'Visible')
+%                 ShowTrajectory(handles);
+%             end
+%         otherwise
+%     end
+% end
 
 
 % --- Executes on button press in St_Robot.
