@@ -2,7 +2,7 @@
 function [score]=com_Assessment(LocalAx,LocalAy)
 axThreshold = 3.5;
 ayThreshold = 3.5;
-numAll = size(LocalAx);
+numAll = size(LocalAx, 1);
 
 %纵向加速度时长计数
 numLocalAx = sum(LocalAx > axThreshold);
