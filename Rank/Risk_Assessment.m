@@ -65,6 +65,18 @@ else
         end
     end
 end
+
+%% 检测是否超出路沿
+transTheta = atan2(refPose(2,2) - obstaclePose(2,2), refPose(1,2) - obstaclePose(1,2));
+transMatrix = [cos(transTheta) -sin(transTheta) obstaclePose(1,2); ...
+               sin(transTheta) cos(transTheta) obstaclePose(2,2); ...
+               0                0               1];
+judgeCarPose = [carPose(1:2,:); ones(1,8)];
+carPoseInObs = transMatrix \ judgeCarPose;
+if any (carPoseInObs(2,:) < -2.05)
+    collisionFlag = 3;   %和路沿发生碰撞
+    return;
+end
 %% 计算最小距离
 % 计算车辆角点到障碍物边线(线段)的距离
 disCar2Ref(1:2,:)=[];

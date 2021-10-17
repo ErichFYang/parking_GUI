@@ -29,19 +29,21 @@ for counter = 1 : size(VehicleSpeed, 1)
     rowStart = row(end); 
 end
 
-% calculate the rot time percentage
-rotPercent = min(1, rotCount / fix(angle(end,1)-angle(1,1)));
+% % calculate the rot time percentage
+% rotPercent = min(1, rotCount / fix(angle(end,1)-angle(1,1)));
+
 
 %原地转向分值
-if rotPercent <= 0.1 % 10%以内的时间原地转向
-    score = 10;
-elseif 0.1 < rotPercent && rotPercent <= 0.2
-    score = 6;
-elseif 0.2 < rotPercent && rotPercent <= 0.3
-    score = 2;
-else
-    score = 0;
-end
+% if rotPercent <= 0.1 % 10%以内的时间原地转向
+%     score = 10;
+% elseif 0.1 < rotPercent && rotPercent <= 0.2
+%     score = 6;
+% elseif 0.2 < rotPercent && rotPercent <= 0.3
+%     score = 2;
+% else
+%     score = 0;
+% end
+score = max(0, 10 * (1 - 0.05*rotCount));
 
 end
 
@@ -51,7 +53,7 @@ function const = speedLimit
 end
 
 function const = timeRange
-    const = 0.3;  % unit: s
+    const = 1;  % unit: s
 end
 
 function const = angleLimit
